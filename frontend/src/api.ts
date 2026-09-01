@@ -1,5 +1,8 @@
 /** เรียก backend ผ่าน path สัมพัทธ์ — vite (dev) และ nginx (prod) proxy /api ให้อยู่แล้ว */
 
+import type { Project, PriorityId, StatusId, Task } from "./types"
+
+
 export type SubtaskSuggestion = {
   title: string
   category: string
@@ -47,6 +50,139 @@ export async function breakdownTask(
   })
   if (!res.ok) throw new Error(await readError(res))
   return res.json()
+}
+
+// ---------- projects & tasks ----------
+
+type ApiTask = {
+  id: string
+  parentId: string | null
+  title: string
+  status: StatusId
+  priority: PriorityId
+  dueDate: string | null
+  position: number
+  assigneeIds: string[]
+  category: string | null
+  tags: string[]
+  estimateHours: number | null
+  complexity: "low" | "medium" | "high" | null
+}
+
+type ApiProject = {
+  id: string
+  name: string
+  githubRepo: string | null
+  memberIds: string[]
+  tasks: ApiTask[]
+}
+
+const toTask = (t: ApiTask): Task => ({
+  id: t.id,
+  parentId: t.parentId,
+  title: t.title,
+  status: t.status,
+  assigneeIds: t.assigneeIds,
+  dueDate: t.dueDate,
+  priority: t.priority,
+  category: t.category,
+  tags: t.tags,
+  estimateHours: t.estimateHours,
+  complexity: t.complexity,
+})
+
+const toProject = (p: ApiProject): Project => ({
+  id: p.id,
+  name: p.name,
+  githubRepo: p.githubRepo,
+  memberIds: p.memberIds,
+  tasks: p.tasks.map(toTask),
+})
+
+export async function getProjects(): Promise<Project[]> {
+  const res = await fetch("/api/projects")
+  if (!res.ok) throw new Error(await readError(res))
+  return (await res.json()).map(toProject)
+}
+
+export async function createProject(name: string, githubRepo: string | null): Promise<Project> {
+  const res = await fetch("/api/projects", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ name, githubRepo }),
+  })
+  if (!res.ok) throw new Error(await readError(res))
+  return toProject(await res.json())
+}
+
+export async function updateProject(id: string, patch: { name?: string }): Promise<void> {
+  const res = await fetch(`/api/projects/${id}`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(patch),
+  })
+  if (!res.ok) throw new Error(await readError(res))
+}
+
+export async function deleteProject(id: string): Promise<void> {
+  const res = await fetch(`/api/projects/${id}`, { method: "DELETE" })
+  if (!res.ok) throw new Error(await readError(res))
+}
+
+export async function addProjectMember(projectId: string, memberId: string): Promise<void> {
+  const res = await fetch(`/api/projects/${projectId}/members/${memberId}`, { method: "POST" })
+  if (!res.ok) throw new Error(await readError(res))
+}
+
+export async function removeProjectMember(projectId: string, memberId: string): Promise<void> {
+  const res = await fetch(`/api/projects/${projectId}/members/${memberId}`, { method: "DELETE" })
+  if (!res.ok) throw new Error(await readError(res))
+}
+
+export type NewTask = {
+  title: string
+  status?: StatusId
+  priority?: PriorityId
+  dueDate?: string | null
+  parentId?: string | null
+  category?: string | null
+  tags?: string[]
+  estimateHours?: number | null
+  complexity?: "low" | "medium" | "high" | null
+}
+
+export async function createTask(projectId: string, task: NewTask): Promise<Task> {
+  const res = await fetch(`/api/projects/${projectId}/tasks`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(task),
+  })
+  if (!res.ok) throw new Error(await readError(res))
+  return toTask(await res.json())
+}
+
+export async function updateTask(
+  id: string,
+  patch: Partial<Pick<Task, "title" | "status" | "priority" | "dueDate" | "category">>,
+): Promise<void> {
+  const res = await fetch(`/api/tasks/${id}`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(patch),
+  })
+  if (!res.ok) throw new Error(await readError(res))
+}
+
+export async function deleteTask(id: string): Promise<void> {
+  const res = await fetch(`/api/tasks/${id}`, { method: "DELETE" })
+  if (!res.ok) throw new Error(await readError(res))
+}
+
+export async function setAssignee(taskId: string, memberId: string, on: boolean): Promise<void> {
+  const res = await fetch(`/api/tasks/${taskId}/assignees/${memberId}`, {
+    method: on ? "PUT" : "DELETE",
+  })
+  if (!res.ok) throw new Error(await readError(res))
 }
 
 // ---------- auth ----------
@@ -133,6 +269,8 @@ export type ImportResult = {
   org: string
   created: number
   updated: number
+  /** คนที่ถูกเชิญแต่ยังไม่กดรับ (นับรวมใน created/updated แล้ว) */
+  pending: number
   members: ApiMember[]
 }
 

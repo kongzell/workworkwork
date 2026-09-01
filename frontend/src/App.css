@@ -14,6 +14,45 @@
 
 .rs-wrap { position: relative; display: flex; flex: none; }
 
+.sync-error {
+  position: fixed;
+  top: 12px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 200;
+  max-width: min(640px, calc(100% - 32px));
+  padding: 9px 16px;
+  border: 1px solid var(--danger);
+  border-radius: 9px;
+  background: var(--bg-pop);
+  color: var(--danger);
+  font-size: 12.5px;
+  box-shadow: var(--shadow);
+}
+
+.empty-projects {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 24px;
+  text-align: center;
+}
+
+.empty-projects h2 {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--text-strong);
+}
+
+.empty-projects p { margin: 0 0 10px; font-size: 13.5px; color: var(--text-dim); }
+
+.empty-form { display: flex; gap: 8px; }
+.empty-form .field-input { width: 220px; }
+
 .view-placeholder {
   flex: 1;
   display: flex;

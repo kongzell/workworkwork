@@ -1,4 +1,3 @@
-import { useState } from "react"
 import type { Filters } from "../App"
 import type { Member, Project } from "../types"
 import { PRIORITIES } from "../types"
@@ -11,13 +10,13 @@ import "./Sidebar.css"
 
 type Props = {
   projects: Project[]
-  activeProjectId: string
+  activeProjectId: string | null
   starredIds: string[]
   members: Member[]
   filters: Filters
   onChangeFilters: (f: Filters) => void
   onSelectProject: (id: string) => void
-  onAddProject: (name: string) => void
+  onOpenAddProject: () => void
   onAddMember: () => void
   onFocusSearch: () => void
   onCollapse: () => void
@@ -25,9 +24,8 @@ type Props = {
 
 export function Sidebar({
   projects, activeProjectId, starredIds, members, filters, onChangeFilters,
-  onSelectProject, onAddProject, onAddMember, onFocusSearch, onCollapse,
+  onSelectProject, onOpenAddProject, onAddMember, onFocusSearch, onCollapse,
 }: Props) {
-  const [adding, setAdding] = useState(false)
   const filterOn = filters.assigneeId !== null || filters.priority !== null
 
   return (
@@ -117,7 +115,7 @@ export function Sidebar({
       >
         {(close) => (
           <>
-            <MenuItem onClick={() => { setAdding(true); close() }}>
+            <MenuItem onClick={() => { onOpenAddProject(); close() }}>
               <IconTaskList size={14} /> โปรเจคใหม่
             </MenuItem>
             <MenuItem onClick={() => { onAddMember(); close() }}>
@@ -136,7 +134,7 @@ export function Sidebar({
               type="button"
               className="sb-icon-btn sb-row-end"
               title="เพิ่มโปรเจค"
-              onClick={() => setAdding(true)}
+              onClick={onOpenAddProject}
             >
               <IconPlus size={14} />
             </button>
@@ -156,56 +154,14 @@ export function Sidebar({
                 <span className="sb-count">{p.tasks.length}</span>
               </button>
             ))}
-
-            {adding && (
-              <NewProject
-                onSubmit={(name) => {
-                  onAddProject(name)
-                  setAdding(false)
-                }}
-                onCancel={() => setAdding(false)}
-              />
-            )}
           </div>
         </div>
 
-        {!adding && (
-          <button type="button" className="sb-row sb-add" onClick={() => setAdding(true)}>
-            <IconPlus size={14} /> New Project
-          </button>
-        )}
+        <button type="button" className="sb-row sb-add" onClick={onOpenAddProject}>
+          <IconPlus size={14} /> New Project
+        </button>
       </section>
     </aside>
   )
 }
 
-function NewProject({
-  onSubmit,
-  onCancel,
-}: {
-  onSubmit: (name: string) => void
-  onCancel: () => void
-}) {
-  const [name, setName] = useState("")
-
-  const commit = () => {
-    const value = name.trim()
-    if (value) onSubmit(value)
-    else onCancel()
-  }
-
-  return (
-    <input
-      autoFocus
-      className="sb-new-input"
-      placeholder="ชื่อโปรเจค แล้วกด Enter"
-      value={name}
-      onChange={(e) => setName(e.target.value)}
-      onBlur={commit}
-      onKeyDown={(e) => {
-        if (e.key === "Enter") commit()
-        if (e.key === "Escape") onCancel()
-      }}
-    />
-  )
-}

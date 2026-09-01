@@ -1,19 +1,23 @@
 import { useEffect, useState } from "react"
 import type { Commit, SystemHealth, WebhookEvent } from "../api"
 import { getCommits, getSystemHealth, getWebhookEvents } from "../api"
-import type { Project, Task } from "../types"
-import { IconCheck, IconChevronRight, IconSparkle } from "./Icons"
+import type { Member, Project, Task } from "../types"
+import { Avatar } from "./Avatar"
+import { IconCheck, IconChevronRight, IconPlus, IconSparkle } from "./Icons"
 import "./RightSidebar.css"
 
 type Props = {
-  project: Project
+  project: Project | null
+  members: Member[]
   onOpenTaskRef: (ref: string) => void
+  onAddMember: () => void
 }
 
-export function RightSidebar({ project, onOpenTaskRef }: Props) {
+export function RightSidebar({ project, members, onOpenTaskRef, onAddMember }: Props) {
   return (
     <aside className="rs">
-      <ProjectStats project={project} />
+      {project && <ProjectStats project={project} />}
+      {project && <TeamPanel members={members} onAddMember={onAddMember} />}
       <GithubActivity onOpenTaskRef={onOpenTaskRef} />
       <HealthBar />
     </aside>
@@ -26,6 +30,7 @@ function ProjectStats({ project }: { project: Project }) {
   const cards = project.tasks.filter((t) => !t.parentId)
   const done = project.tasks.filter((t) => t.status === "complete").length
   const doing = project.tasks.filter((t) => t.status === "in-progress").length
+  const review = project.tasks.filter((t) => t.status === "review").length
   const todo = project.tasks.filter((t) => t.status === "todo").length
   const total = project.tasks.length
   const percent = total === 0 ? 0 : Math.round((done / total) * 100)
@@ -47,9 +52,39 @@ function ProjectStats({ project }: { project: Project }) {
         <div><dt>การ์ดบนบอร์ด</dt><dd>{cards.length}</dd></div>
         <div><dt>รอเริ่ม</dt><dd className="c-todo">{todo}</dd></div>
         <div><dt>กำลังทำ</dt><dd className="c-prog">{doing}</dd></div>
+        <div><dt>รอตรวจ</dt><dd className="c-review">{review}</dd></div>
         <div><dt>เสร็จแล้ว</dt><dd className="c-done">{done}</dd></div>
         <div><dt>เวลาที่ประเมิน</dt><dd>{hours ? `${hours.toFixed(1)} ชม.` : "—"}</dd></div>
       </dl>
+    </section>
+  )
+}
+
+/* ---------- ทีมในโปรเจค ---------- */
+
+function TeamPanel({ members, onAddMember }: { members: Member[]; onAddMember: () => void }) {
+  return (
+    <section className="rs-panel">
+      <header className="rs-head">
+        <span className="rs-title">ทีมในโปรเจค</span>
+        <span className="rs-count">{members.length}</span>
+      </header>
+
+      {members.length === 0 && <p className="rs-empty">ยังไม่มีใครในโปรเจคนี้</p>}
+
+      <ul className="rs-team">
+        {members.map((m) => (
+          <li key={m.id}>
+            <Avatar member={m} size={22} />
+            <span className="rs-team-name">{m.name}</span>
+            <span className="rs-team-role">{m.role}</span>
+          </li>
+        ))}
+      </ul>
+
+      <button type="button" className="rs-add-member" onClick={onAddMember}>
+        <IconPlus size={14} /> เพิ่มพนักงาน
+      </button>
     </section>
   )
 }
@@ -64,33 +99,50 @@ type FeedRow = {
   ref: string | null
 }
 
+/** โควตา GitHub แบบไม่ล็อกอินคือ 60 ครั้ง/ชม. ถามทุก 5 นาที = 12 ครั้ง/ชม. */
+const POLL_MS = 5 * 60 * 1000
+
 function GithubActivity({ onOpenTaskRef }: { onOpenTaskRef: (ref: string) => void }) {
   const [commits, setCommits] = useState<Commit[]>([])
   const [events, setEvents] = useState<WebhookEvent[]>([])
   const [note, setNote] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
+  const [tick, setTick] = useState(0)
 
   useEffect(() => {
     let alive = true
+    let timer: number | undefined
 
     const load = async () => {
       setLoading(true)
       const [c, e] = await Promise.allSettled([getCommits(6), getWebhookEvents(8)])
       if (!alive) return
+
       setCommits(c.status === "fulfilled" ? c.value : [])
       setEvents(e.status === "fulfilled" ? e.value : [])
-      setNote(c.status === "rejected" ? String(c.reason?.message ?? "ดึง commit ไม่สำเร็จ") : null)
+
+      if (c.status === "rejected") {
+        const raw = String(c.reason?.message ?? "")
+        setNote(
+          raw.includes("rate limit")
+            ? "GitHub จำกัดจำนวนครั้งที่เรียกได้ต่อชั่วโมง — เข้าสู่ระบบด้วย GitHub จะได้โควตาสูงขึ้นมาก"
+            : raw || "ดึง commit ไม่สำเร็จ",
+        )
+        // โดนจำกัดแล้วอย่ายิงซ้ำอัตโนมัติ รอผู้ใช้กดรีเฟรชเอง
+        if (raw.includes("rate limit") && timer) clearInterval(timer)
+      } else {
+        setNote(null)
+      }
       setLoading(false)
     }
 
     void load()
-    // ยังไม่มี websocket — ถามซ้ำทุก 30 วินาทีพอ
-    const timer = setInterval(() => void load(), 30_000)
+    timer = setInterval(() => void load(), POLL_MS)
     return () => {
       alive = false
       clearInterval(timer)
     }
-  }, [])
+  }, [tick])
 
   const rows: FeedRow[] = [
     ...events.map((e) => ({
@@ -113,7 +165,15 @@ function GithubActivity({ onOpenTaskRef }: { onOpenTaskRef: (ref: string) => voi
     <section className="rs-panel">
       <header className="rs-head">
         <span className="rs-title">GitHub Activity</span>
-        <span className="rs-count">{rows.length}</span>
+        <button
+          type="button"
+          className="rs-refresh"
+          title="ดึงใหม่"
+          disabled={loading}
+          onClick={() => setTick((t) => t + 1)}
+        >
+          {loading ? "..." : "รีเฟรช"}
+        </button>
       </header>
 
       {rows.length === 0 && <p className="rs-empty">{note ?? "ยังไม่มีความเคลื่อนไหว"}</p>}
@@ -137,7 +197,6 @@ function GithubActivity({ onOpenTaskRef }: { onOpenTaskRef: (ref: string) => voi
         ))}
       </ul>
 
-      {loading && rows.length > 0 && <p className="rs-empty">กำลังอัปเดต...</p>}
     </section>
   )
 }

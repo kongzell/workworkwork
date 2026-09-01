@@ -1,23 +1,21 @@
 import { useState } from "react"
 import type { RefObject } from "react"
 import type { AuthStatus } from "../api"
-import type { Member, Project } from "../types"
+import type { Project } from "../types"
 import { ROLES } from "../types"
 import type { ThemeId } from "../themes"
-import { AvatarStack } from "./Avatar"
 import { Menu, MenuItem, MenuLabel } from "./Menu"
 import { ThemePicker } from "./ThemePicker"
 import {
   IconCheck, IconChevronDown, IconChevronRight, IconGithub, IconLayers, IconPencil,
-  IconPlus, IconSearch, IconStar, IconTaskList, IconTrash, IconUsers,
+  IconSearch, IconStar, IconTaskList, IconTrash, IconUsers,
 } from "./Icons"
 import "./Topbar.css"
 
 type Props = {
-  project: Project
+  project: Project | null
   projects: Project[]
   taskCount: number
-  members: Member[]
   query: string
   searchRef: RefObject<HTMLInputElement | null>
   starred: boolean
@@ -37,14 +35,13 @@ type Props = {
   onToggleStar: () => void
   onExpand: () => void
   onChangeTheme: (id: ThemeId) => void
-  onAddMember: () => void
 }
 
 export function Topbar({
-  project, projects, taskCount, members, query, searchRef, starred, collapsed, theme,
+  project, projects, taskCount, query, searchRef, starred, collapsed, theme,
   canDelete, groupBy, auth, onChangeGroupBy, onDevLogin, onLogout, onChangeRole, onQueryChange,
   onSelectProject, onRenameProject, onDeleteProject, onToggleStar, onExpand,
-  onChangeTheme, onAddMember,
+  onChangeTheme,
 }: Props) {
   const [renaming, setRenaming] = useState(false)
 
@@ -61,11 +58,15 @@ export function Topbar({
           <span className="tb-crumb">
             <span className="tb-crumb-badge"><IconUsers size={11} /></span> Team Projects
           </span>
+          {project === null ? (
+            <span className="tb-crumb-dim">ยังไม่ได้เลือกโปรเจค</span>
+          ) : (
+            <>
           <span className="tb-sep">/</span>
 
           {renaming ? (
             <RenameInput
-              value={project.name}
+              value={project?.name ?? ""}
               onSubmit={(name) => {
                 onRenameProject(name)
                 setRenaming(false)
@@ -78,7 +79,7 @@ export function Topbar({
               title="เมนูโปรเจค"
               trigger={() => (
                 <span className="tb-crumb tb-crumb-current">
-                  <IconTaskList size={14} className="tb-crumb-list" /> {project.name}
+                  <IconTaskList size={14} className="tb-crumb-list" /> {project?.name}
                   <IconChevronDown size={13} />
                 </span>
               )}
@@ -89,12 +90,12 @@ export function Topbar({
                   {projects.map((p) => (
                     <MenuItem
                       key={p.id}
-                      active={p.id === project.id}
+                      active={p.id === project?.id}
                       onClick={() => { onSelectProject(p.id); close() }}
                     >
                       <IconTaskList size={14} />
                       <span className="menu-grow">{p.name}</span>
-                      {p.id === project.id && <IconCheck size={14} />}
+                      {p.id === project?.id && <IconCheck size={14} />}
                     </MenuItem>
                   ))}
 
@@ -123,9 +124,13 @@ export function Topbar({
           >
             <IconStar size={15} />
           </button>
+            </>
+          )}
         </nav>
 
         <div className="tb-actions">
+          {project !== null && (
+            <>
           <Menu
             align="right"
             title="จัดกลุ่มคอลัมน์"
@@ -168,11 +173,9 @@ export function Topbar({
               onChange={(e) => onQueryChange(e.target.value)}
             />
           </label>
-          <AvatarStack members={members} size={24} />
-          <button type="button" className="tb-add-member" onClick={onAddMember}>
-            <IconPlus size={14} /> เพิ่มพนักงาน
-          </button>
           <span className="tb-divider" />
+            </>
+          )}
           <AuthChip auth={auth} onDevLogin={onDevLogin} onLogout={onLogout} onChangeRole={onChangeRole} />
           <ThemePicker value={theme} onChange={onChangeTheme} />
         </div>

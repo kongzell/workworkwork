@@ -34,7 +34,8 @@
 .board {
   flex: 1;
   display: grid;
-  grid-template-columns: repeat(3, minmax(230px, 1fr));
+  /* จำนวนคอลัมน์เปลี่ยนตามจำนวนสถานะ — ให้ยืดเองตามความกว้าง */
+  grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
   align-items: start;
   gap: 18px;
   padding: 22px 22px 48px;

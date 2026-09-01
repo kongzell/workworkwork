@@ -1,26 +1,32 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
-import { INITIAL_MEMBERS, INITIAL_PROJECTS, nextId } from "./data"
-import type { Member, PriorityId, Project, StatusId, Task } from "./types"
+import { INITIAL_MEMBERS, INITIAL_PROJECTS } from "./data"
+import type { Member, PriorityId, Project, StatusId } from "./types"
 import type { ThemeId } from "./themes"
 import { loadTheme, saveTheme } from "./themes"
 import type { AuthStatus, SubtaskSuggestion } from "./api"
+import * as api from "./api"
 import { createMemberApi, devLogin, getAuthStatus, getMembers, logout, updateMyRole } from "./api"
 import { AddMemberModal } from "./components/AddMemberModal"
+import { AddProjectModal } from "./components/AddProjectModal"
 import { AiBreakdownModal } from "./components/AiBreakdownModal"
 import { Board } from "./components/Board"
 import { RightSidebar, TaskDetailPanel } from "./components/RightSidebar"
 import { Sidebar } from "./components/Sidebar"
 import { Topbar } from "./components/Topbar"
-import { IconSparkle } from "./components/Icons"
+import { IconGithub, IconSparkle } from "./components/Icons"
 import "./App.css"
 
 export type Filters = { assigneeId: string | null; priority: PriorityId | null }
 
 export default function App() {
   const [projects, setProjects] = useState<Project[]>(INITIAL_PROJECTS)
+  const [syncError, setSyncError] = useState<string | null>(null)
   const [allMembers, setAllMembers] = useState<Member[]>(INITIAL_MEMBERS)
-  const [activeProjectId, setActiveProjectId] = useState(INITIAL_PROJECTS[0].id)
+  const [activeProjectId, setActiveProjectId] = useState<string | null>(
+    INITIAL_PROJECTS[0]?.id ?? null,
+  )
   const [memberModalOpen, setMemberModalOpen] = useState(false)
+  const [projectModalOpen, setProjectModalOpen] = useState(false)
   const [query, setQuery] = useState("")
   const [filters, setFilters] = useState<Filters>({ assigneeId: null, priority: null })
   const [collapsed, setCollapsed] = useState(false)
@@ -37,6 +43,36 @@ export default function App() {
     document.documentElement.dataset.theme = theme
     saveTheme(theme)
   }, [theme])
+
+  /** โหลดโปรเจคทั้งหมดจาก database */
+  const refreshProjects = useCallback(async () => {
+    try {
+      const rows = await api.getProjects()
+      setProjects(rows)
+      setSyncError(null)
+      return rows
+    } catch (e) {
+      setSyncError(e instanceof Error ? e.message : "ต่อ API ไม่ได้")
+      return null
+    }
+  }, [])
+
+  /**
+   * ยิง API แล้วโหลดข้อมูลใหม่ — ถ้าพลาดจะดึงของจริงจาก server กลับมา
+   * เพื่อไม่ให้หน้าจอค้างอยู่ที่สถานะที่ไม่ได้บันทึกจริง
+   */
+  const sync = useCallback(
+    async (action: () => Promise<unknown>) => {
+      try {
+        await action()
+        setSyncError(null)
+      } catch (e) {
+        setSyncError(e instanceof Error ? e.message : "บันทึกไม่สำเร็จ")
+      }
+      await refreshProjects()
+    },
+    [refreshProjects],
+  )
 
   /** รายชื่อพนักงานมาจาก database — ถ้าต่อ API ไม่ได้ค่อยใช้ข้อมูลตัวอย่างในเครื่อง */
   const refreshMembers = useCallback(async () => {
@@ -63,167 +99,143 @@ export default function App() {
     void refreshAuth()
     // oxlint-disable-next-line react/set-state-in-effect
     void refreshMembers()
-  }, [refreshAuth, refreshMembers])
+    // oxlint-disable-next-line react/set-state-in-effect
+    void refreshProjects()
+  }, [refreshAuth, refreshMembers, refreshProjects])
 
-  const project = projects.find((p) => p.id === activeProjectId) ?? projects[0]
+  // null เมื่อยังไม่มีโปรเจคสักใบ — หน้าจอจะแสดง empty state แทน
+  const project = projects.find((p) => p.id === activeProjectId) ?? projects[0] ?? null
 
   const projectMembers = useMemo(
-    () => allMembers.filter((m) => project.memberIds.includes(m.id)),
-    [allMembers, project.memberIds],
+    () => (project ? allMembers.filter((m) => project.memberIds.includes(m.id)) : []),
+    [allMembers, project],
   )
 
   const availableMembers = useMemo(
-    () => allMembers.filter((m) => !project.memberIds.includes(m.id)),
-    [allMembers, project.memberIds],
+    () => (project ? allMembers.filter((m) => !project.memberIds.includes(m.id)) : allMembers),
+    [allMembers, project],
   )
 
-  const selectedTask = project.tasks.find((t) => t.id === selectedTaskId) ?? null
-  const subtasks = selectedTask
-    ? project.tasks.filter((t) => t.parentId === selectedTask.id)
-    : []
+  const selectedTask = project?.tasks.find((t) => t.id === selectedTaskId) ?? null
+  const subtasks =
+    selectedTask && project ? project.tasks.filter((t) => t.parentId === selectedTask.id) : []
 
-  /** แก้เฉพาะโปรเจคที่เปิดอยู่ */
-  const patchProject = (fn: (p: Project) => Project) =>
-    setProjects((prev) => prev.map((p) => (p.id === project.id ? fn(p) : p)))
-
-  const patchTask = (taskId: string, fn: (t: Task) => Task) =>
-    patchProject((p) => ({ ...p, tasks: p.tasks.map((t) => (t.id === taskId ? fn(t) : t)) }))
-
-  const addTask = (status: StatusId, title: string) =>
-    patchProject((p) => ({
-      ...p,
-      tasks: [
-        ...p.tasks,
-        {
-          id: nextId("t"), parentId: null, title, status, assigneeIds: [], dueDate: null,
-          priority: "none", category: null, tags: [], estimateHours: null, complexity: null,
-        },
-      ],
-    }))
+  const addTask = (status: StatusId, title: string) => {
+    if (!project) return
+    void sync(() => api.createTask(project.id, { title, status }))
+  }
 
   /**
    * เพิ่มผลลัพธ์จาก AI — สร้างการ์ดแม่จากหัวข้อที่พิมพ์ไว้ 1 ใบ
    * แล้วเก็บงานย่อยไว้ข้างใน (ไม่ขึ้นบนบอร์ด ดูได้จากแผงรายละเอียดฝั่งขวา)
    */
   const addSuggestions = (parentTitle: string, picked: SubtaskSuggestion[]) => {
-    const parentId = nextId("t")
+    if (!project) return
     const totalHours = picked.reduce((sum, s) => sum + s.estimateHours, 0)
 
-    patchProject((p) => ({
-      ...p,
-      tasks: [
-        ...p.tasks,
-        {
-          id: parentId,
-          parentId: null,
-          title: parentTitle,
-          status: "todo" as StatusId,
-          assigneeIds: [],
-          dueDate: null,
-          priority: "none" as PriorityId,
-          category: null,
-          tags: [],
-          estimateHours: totalHours || null,
-          complexity: null,
-        },
-        ...picked.map((s) => ({
-          id: nextId("t"),
-          parentId,
+    void sync(async () => {
+      const parent = await api.createTask(project.id, {
+        title: parentTitle,
+        estimateHours: totalHours || null,
+      })
+      for (const s of picked) {
+        await api.createTask(project.id, {
           title: s.title,
-          status: "todo" as StatusId,
-          assigneeIds: [],
-          dueDate: null,
-          priority: "none" as PriorityId,
+          parentId: parent.id,
           category: s.category,
           tags: s.tags,
           estimateHours: s.estimateHours,
           complexity: s.complexity,
-        })),
-      ],
-    }))
-
-    setSelectedTaskId(parentId)
+        })
+      }
+      setSelectedTaskId(parent.id)
+    })
   }
 
-  /** ลบงานแม่ให้ลบงานย่อยตามไปด้วย */
-  const deleteTask = (taskId: string) =>
-    patchProject((p) => ({
-      ...p,
-      tasks: p.tasks.filter((t) => t.id !== taskId && t.parentId !== taskId),
-    }))
+  /** ลบงานแม่ — งานย่อยถูกลบตามด้วย cascade ที่ฝั่ง database */
+  const deleteTask = (taskId: string) => void sync(() => api.deleteTask(taskId))
 
-  const toggleSubtaskDone = (id: string) =>
-    patchTask(id, (t) => ({ ...t, status: t.status === "complete" ? "todo" : "complete" }))
-
-  const toggleAssignee = (taskId: string, memberId: string) =>
-    patchTask(taskId, (t) => ({
-      ...t,
-      assigneeIds: t.assigneeIds.includes(memberId)
-        ? t.assigneeIds.filter((id) => id !== memberId)
-        : [...t.assigneeIds, memberId],
-    }))
-
-  const addExistingMember = (memberId: string) =>
-    patchProject((p) =>
-      p.memberIds.includes(memberId) ? p : { ...p, memberIds: [...p.memberIds, memberId] },
+  const toggleSubtaskDone = (id: string) => {
+    const task = project?.tasks.find((t) => t.id === id)
+    if (!task) return
+    void sync(() =>
+      api.updateTask(id, { status: task.status === "complete" ? "todo" : "complete" }),
     )
+  }
 
-  /** เอาออกจากโปรเจค + ถอด assign ออกจากทุก task ของโปรเจคนี้ */
-  const removeMember = (memberId: string) =>
-    patchProject((p) => ({
-      ...p,
-      memberIds: p.memberIds.filter((id) => id !== memberId),
-      tasks: p.tasks.map((t) => ({ ...t, assigneeIds: t.assigneeIds.filter((id) => id !== memberId) })),
-    }))
+  const toggleAssignee = (taskId: string, memberId: string) => {
+    const task = project?.tasks.find((t) => t.id === taskId)
+    if (!task) return
+    void sync(() => api.setAssignee(taskId, memberId, !task.assigneeIds.includes(memberId)))
+  }
+
+  const addExistingMember = (memberId: string) => {
+    if (!project) return
+    void sync(() => api.addProjectMember(project.id, memberId))
+  }
+
+  /** เอาออกจากโปรเจค — backend ถอด assign ในโปรเจคนี้ให้ด้วย */
+  const removeMember = (memberId: string) => {
+    if (!project) return
+    void sync(() => api.removeProjectMember(project.id, memberId))
+  }
 
   const createMember = async (name: string, role: string, color: string) => {
-    try {
-      const saved = await createMemberApi(name, role, color)
-      setAllMembers((prev) => [...prev, { id: saved.id, name: saved.name, role: saved.role, color: saved.color }])
-      addExistingMember(saved.id)
-    } catch {
-      // ต่อ API ไม่ได้ — เก็บไว้ในเครื่องก่อน
-      const member: Member = { id: nextId("m"), name, role, color }
-      setAllMembers((prev) => [...prev, member])
-      addExistingMember(member.id)
-    }
+    const saved = await createMemberApi(name, role, color)
+    await refreshMembers()
+    if (project) await sync(() => api.addProjectMember(project.id, saved.id))
   }
 
   // ---------- โปรเจค ----------
 
-  const addProject = (name: string) => {
-    const created: Project = { id: nextId("p"), name, tasks: [], memberIds: [] }
-    setProjects((prev) => [...prev, created])
-    setActiveProjectId(created.id)
+  const addProject = (name: string, githubRepo: string | null = null, memberIds: string[] = []) => {
+    void sync(async () => {
+      const created = await api.createProject(name, githubRepo)
+      for (const memberId of memberIds) {
+        await api.addProjectMember(created.id, memberId)
+      }
+      setActiveProjectId(created.id)
+    })
   }
 
-  const renameProject = (name: string) => patchProject((p) => ({ ...p, name }))
+  const renameProject = (name: string) => {
+    if (!project) return
+    void sync(() => api.updateProject(project.id, { name }))
+  }
 
   const deleteProject = () => {
-    if (projects.length <= 1) return
+    if (!project) return
     const rest = projects.filter((p) => p.id !== project.id)
-    setProjects(rest)
     setStarredIds((prev) => prev.filter((id) => id !== project.id))
-    setActiveProjectId(rest[0].id)
+    setActiveProjectId(rest[0]?.id ?? null)
+    setSelectedTaskId(null)
+    void sync(() => api.deleteProject(project.id))
   }
 
-  const toggleStar = () =>
+  const toggleStar = () => {
+    if (!project) return
     setStarredIds((prev) =>
       prev.includes(project.id) ? prev.filter((id) => id !== project.id) : [...prev, project.id],
     )
+  }
 
   return (
     <div className="app">
+      {syncError && (
+        <div className="sync-error" role="alert">
+          บันทึกลงฐานข้อมูลไม่สำเร็จ: {syncError}
+        </div>
+      )}
       {!collapsed && (
         <Sidebar
           projects={projects}
-          activeProjectId={project.id}
+          activeProjectId={project?.id ?? null}
           starredIds={starredIds}
           members={projectMembers}
           filters={filters}
           onChangeFilters={setFilters}
           onSelectProject={setActiveProjectId}
-          onAddProject={addProject}
+          onOpenAddProject={() => setProjectModalOpen(true)}
           onAddMember={() => setMemberModalOpen(true)}
           onFocusSearch={() => searchRef.current?.focus()}
           onCollapse={() => setCollapsed(true)}
@@ -234,14 +246,13 @@ export default function App() {
         <Topbar
           project={project}
           projects={projects}
-          taskCount={project.tasks.filter((t) => !t.parentId).length}
-          members={projectMembers}
+          taskCount={project ? project.tasks.filter((t) => !t.parentId).length : 0}
           query={query}
           searchRef={searchRef}
-          starred={starredIds.includes(project.id)}
+          starred={project ? starredIds.includes(project.id) : false}
           collapsed={collapsed}
           theme={theme}
-          canDelete={projects.length > 1}
+          canDelete
           groupBy={groupBy}
           auth={auth}
           onChangeGroupBy={setGroupBy}
@@ -252,7 +263,6 @@ export default function App() {
           onToggleStar={toggleStar}
           onExpand={() => setCollapsed(false)}
           onChangeTheme={setTheme}
-          onAddMember={() => setMemberModalOpen(true)}
           onDevLogin={async () => {
             await devLogin()
             await refreshAuth()
@@ -267,34 +277,43 @@ export default function App() {
           }}
         />
 
-        <Board
-          project={project}
-          members={projectMembers}
-          query={query}
-          filters={filters}
-          groupBy={groupBy}
-          selectedTaskId={selectedTaskId}
-          onOpenTask={setSelectedTaskId}
-          onAddTask={addTask}
-          onChangeStatus={(taskId, status) => patchTask(taskId, (t) => ({ ...t, status }))}
-          onToggleAssignee={toggleAssignee}
-          onSetPriority={(taskId, priority: PriorityId) => patchTask(taskId, (t) => ({ ...t, priority }))}
-          onSetDue={(taskId, dueDate) => patchTask(taskId, (t) => ({ ...t, dueDate }))}
-          onSetCategory={(taskId, category) => patchTask(taskId, (t) => ({ ...t, category }))}
-          onDeleteTask={(id) => {
-            deleteTask(id)
-            if (id === selectedTaskId) setSelectedTaskId(null)
-          }}
-          onAddMember={() => setMemberModalOpen(true)}
-          onClearFilters={() => {
-            setFilters({ assigneeId: null, priority: null })
-            setQuery("")
-          }}
-        />
+        {project === null ? (
+          <EmptyProjects onOpen={() => setProjectModalOpen(true)} />
+        ) : (
+          <Board
+            project={project}
+            members={projectMembers}
+            query={query}
+            filters={filters}
+            groupBy={groupBy}
+            selectedTaskId={selectedTaskId}
+            onOpenTask={setSelectedTaskId}
+            onAddTask={addTask}
+            onChangeStatus={(taskId, status) => void sync(() => api.updateTask(taskId, { status }))}
+            onToggleAssignee={toggleAssignee}
+            onSetPriority={(taskId, priority: PriorityId) => void sync(() => api.updateTask(taskId, { priority }))}
+            onSetDue={(taskId, dueDate) => void sync(() => api.updateTask(taskId, { dueDate }))}
+            onSetCategory={(taskId, category) => void sync(() => api.updateTask(taskId, { category }))}
+            onDeleteTask={(id) => {
+              deleteTask(id)
+              if (id === selectedTaskId) setSelectedTaskId(null)
+            }}
+            onAddMember={() => setMemberModalOpen(true)}
+            onClearFilters={() => {
+              setFilters({ assigneeId: null, priority: null })
+              setQuery("")
+            }}
+          />
+        )}
       </main>
 
       <div className="rs-wrap">
-        <RightSidebar project={project} onOpenTaskRef={(ref) => setQuery(ref)} />
+        <RightSidebar
+          project={project}
+          members={projectMembers}
+          onOpenTaskRef={(ref) => setQuery(ref)}
+          onAddMember={() => setMemberModalOpen(true)}
+        />
         {selectedTask && (
           <TaskDetailPanel
             task={selectedTask}
@@ -305,17 +324,19 @@ export default function App() {
         )}
       </div>
 
-      <button
-        type="button"
-        className="ai-fab"
-        title="แตกงานด้วย AI"
-        aria-label="แตกงานด้วย AI"
-        onClick={() => setAiOpen(true)}
-      >
-        <IconSparkle size={22} />
-      </button>
+      {project && (
+        <button
+          type="button"
+          className="ai-fab"
+          title="แตกงานด้วย AI"
+          aria-label="แตกงานด้วย AI"
+          onClick={() => setAiOpen(true)}
+        >
+          <IconSparkle size={22} />
+        </button>
+      )}
 
-      {aiOpen && (
+      {aiOpen && project && (
         <AiBreakdownModal
           projectName={project.name}
           onClose={() => setAiOpen(false)}
@@ -323,7 +344,16 @@ export default function App() {
         />
       )}
 
-      {memberModalOpen && (
+      {projectModalOpen && (
+        <AddProjectModal
+          usedRepos={projects.map((p) => p.githubRepo).filter((r): r is string => r !== null)}
+          onClose={() => setProjectModalOpen(false)}
+          onAdd={addProject}
+          onMembersChanged={refreshMembers}
+        />
+      )}
+
+      {memberModalOpen && project && (
         <AddMemberModal
           projectName={project.name}
           members={projectMembers}
@@ -335,6 +365,19 @@ export default function App() {
           onImported={refreshMembers}
         />
       )}
+    </div>
+  )
+}
+
+/** หน้าจอตอนยังไม่มีโปรเจคสักใบ */
+function EmptyProjects({ onOpen }: { onOpen: () => void }) {
+  return (
+    <div className="empty-projects">
+      <h2>ยังไม่มีโปรเจค</h2>
+      <p>เพิ่ม repository จาก GitHub มาทำเป็นบอร์ด หรือสร้างโปรเจคเปล่าก็ได้</p>
+      <button type="button" className="btn btn-primary" onClick={onOpen}>
+        <IconGithub size={14} /> เพิ่มโปรเจค
+      </button>
     </div>
   )
 }

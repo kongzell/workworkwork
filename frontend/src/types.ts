@@ -1,4 +1,4 @@
-export type StatusId = "todo" | "in-progress" | "complete"
+export type StatusId = "todo" | "in-progress" | "review" | "complete"
 
 export type PriorityId = "urgent" | "high" | "normal" | "low" | "none"
 
@@ -32,6 +32,8 @@ export type Task = {
 export type Project = {
   id: string
   name: string
+  /** repo บน GitHub ที่โปรเจคนี้ผูกอยู่ เช่น "kongzell/Follow-up" */
+  githubRepo: string | null
   tasks: Task[]
   memberIds: string[]
 }
@@ -39,6 +41,7 @@ export type Project = {
 export const STATUSES: { id: StatusId; label: string; color: string }[] = [
   { id: "todo", label: "รอเริ่ม", color: "var(--status-todo)" },
   { id: "in-progress", label: "กำลังทำ", color: "var(--status-progress)" },
+  { id: "review", label: "รอตรวจ", color: "var(--status-review)" },
   { id: "complete", label: "เสร็จแล้ว", color: "var(--status-complete)" },
 ]
 

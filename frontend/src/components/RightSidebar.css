@@ -84,7 +84,63 @@
 
 .rs-stats .c-todo { color: var(--status-todo); }
 .rs-stats .c-prog { color: var(--status-progress); }
+.rs-stats .c-review { color: var(--status-review); }
 .rs-stats .c-done { color: var(--status-complete); }
+
+/* ---------- ทีม ---------- */
+
+.rs-team { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 7px; }
+
+.rs-team li { display: flex; align-items: center; gap: 8px; min-width: 0; }
+
+.rs-team-name {
+  font-size: 12.5px;
+  color: var(--text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.rs-team-role {
+  margin-left: auto;
+  font-size: 10.5px;
+  color: var(--text-faint);
+  white-space: nowrap;
+}
+
+.rs-add-member {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  width: 100%;
+  padding: 7px;
+  border: 1px solid var(--accent);
+  border-radius: 8px;
+  background: var(--accent-soft);
+  color: var(--accent-text);
+  font: inherit;
+  font-size: 12.5px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.rs-add-member:hover { background: var(--accent); color: var(--accent-ink); }
+
+.rs-refresh {
+  margin-left: auto;
+  padding: 2px 8px;
+  border: 1px solid var(--border-strong);
+  border-radius: 6px;
+  background: none;
+  color: var(--text-dim);
+  font: inherit;
+  font-size: 10.5px;
+  cursor: pointer;
+}
+
+.rs-refresh:hover:not(:disabled) { background: var(--bg-hover); color: var(--text-strong); }
+.rs-refresh:disabled { opacity: 0.5; cursor: default; }
 
 /* ---------- feed ---------- */
 

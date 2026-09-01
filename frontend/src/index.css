@@ -29,6 +29,7 @@
 
   --status-todo: #9a9a9a;
   --status-progress: #2f80ff;
+  --status-review: #a78bfa;
   --status-complete: #22c55e;
   --danger: #e5484d;
 
@@ -63,6 +64,7 @@
 
   --status-todo: #7b7b85;
   --status-progress: #2f80ff;
+  --status-review: #7c3aed;
   --status-complete: #16a34a;
   --danger: #d92d33;
   --prio-high: #b45309;
@@ -99,6 +101,7 @@
 
   --status-todo: #8598b3;
   --status-progress: #38bdf8;
+  --status-review: #c084fc;
   --status-complete: #34d399;
   --danger: #f87171;
 
@@ -132,6 +135,7 @@
 
   --status-todo: #92a598;
   --status-progress: #38bdf8;
+  --status-review: #c084fc;
   --status-complete: #22c55e;
   --danger: #f87171;
 
@@ -165,6 +169,7 @@
 
   --status-todo: #a8938d;
   --status-progress: #f59e0b;
+  --status-review: #c084fc;
   --status-complete: #22c55e;
   --danger: #ef4444;
 

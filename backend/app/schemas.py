@@ -10,7 +10,7 @@ from typing import Literal
 from pydantic import BaseModel, ConfigDict, Field
 from pydantic.alias_generators import to_camel
 
-StatusId = Literal["todo", "in-progress", "complete"]
+StatusId = Literal["todo", "in-progress", "review", "complete"]
 PriorityId = Literal["urgent", "high", "normal", "low", "none"]
 Complexity = Literal["low", "medium", "high"]
 
@@ -90,11 +90,18 @@ class TaskOut(ApiModel):
 
 class ProjectCreate(ApiModel):
     name: str = Field(min_length=1, max_length=160)
+    github_repo: str | None = Field(default=None, max_length=200)
+
+
+class ProjectUpdate(ApiModel):
+    name: str | None = Field(default=None, min_length=1, max_length=160)
+    github_repo: str | None = Field(default=None, max_length=200)
 
 
 class ProjectOut(ApiModel):
     id: str
     name: str
+    github_repo: str | None
     member_ids: list[str]
     tasks: list[TaskOut]
 
@@ -178,6 +185,8 @@ class ImportResult(ApiModel):
     created: int
     #: จำนวนคนที่มีอยู่แล้ว อัปเดตข้อมูลให้
     updated: int
+    #: จำนวนคนที่ถูกเชิญแต่ยังไม่กดรับ (นับรวมอยู่ใน created/updated แล้ว)
+    pending: int = 0
     members: list[MemberOut]
 
 

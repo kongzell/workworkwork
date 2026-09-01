@@ -215,7 +215,10 @@ function GithubImport({ onImported }: { onImported: () => void }) {
         source === "repo"
           ? await importRepoCollaborators(name)
           : await importOrgMembers(name)
-      setMessage(`ดึงจาก ${result.org} แล้ว — เพิ่มใหม่ ${result.created} คน, อัปเดต ${result.updated} คน`)
+      const pendingNote = result.pending > 0 ? ` (ในนั้นยังไม่ตอบรับคำเชิญ ${result.pending} คน)` : ""
+      setMessage(
+        `ดึงจาก ${result.org} แล้ว — เพิ่มใหม่ ${result.created} คน, อัปเดต ${result.updated} คน${pendingNote}`,
+      )
       onImported()
     } catch (e) {
       setError(e instanceof Error ? e.message : "ดึงรายชื่อไม่สำเร็จ")

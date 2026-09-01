@@ -4,7 +4,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db import get_session
 from app.models import Member, Project, Task, project_members, task_assignees
-from app.schemas import ProjectCreate, ProjectOut, TaskCreate, TaskOut
+from app.schemas import ProjectCreate, ProjectOut, ProjectUpdate, TaskCreate, TaskOut
 from app.serialize import project_out, task_out
 
 router = APIRouter(prefix="/api/projects", tags=["projects"])
@@ -28,8 +28,23 @@ async def create_project(
     payload: ProjectCreate,
     session: AsyncSession = Depends(get_session),
 ) -> ProjectOut:
-    project = Project(name=payload.name)
+    project = Project(name=payload.name, github_repo=payload.github_repo)
     session.add(project)
+    await session.commit()
+    await session.refresh(project)
+    return project_out(project)
+
+
+@router.patch("/{project_id}", response_model=ProjectOut)
+async def update_project(
+    project_id: str,
+    payload: ProjectUpdate,
+    session: AsyncSession = Depends(get_session),
+) -> ProjectOut:
+    project = await _get_project(session, project_id)
+    data = payload.model_dump(exclude_unset=True)
+    for field, value in data.items():
+        setattr(project, field, value)
     await session.commit()
     await session.refresh(project)
     return project_out(project)

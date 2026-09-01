@@ -58,19 +58,6 @@
 .sb-star svg,
 .sb-star { fill: currentColor; }
 
-.sb-new-input {
-  width: 100%;
-  margin-top: 2px;
-  padding: 6px 8px;
-  border: 1px solid var(--accent);
-  border-radius: 7px;
-  background: var(--bg-card);
-  color: var(--text-strong);
-  font: inherit;
-  font-size: 13px;
-  outline: none;
-}
-
 .sb-create {
   display: flex;
   align-items: center;

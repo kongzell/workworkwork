@@ -13,7 +13,7 @@ from fastapi import APIRouter, Depends, Header, HTTPException, Request
 from sqlalchemy import desc, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.auth import require_member
+from app.auth import current_member, require_member
 from app.config import get_settings
 from app.db import get_session
 from app.models import Member, WebhookEvent
@@ -179,17 +179,37 @@ async def import_collaborators(
     people = await _github_get(
         token, f"https://api.github.com/repos/{repo}/collaborators", {"per_page": 100}
     )
-    created, updated, touched = await _upsert_people(session, token, people)
+
+    # GitHub นับเป็น collaborator เฉพาะคนที่กดรับคำเชิญแล้ว
+    # คนที่ยังไม่ตอบรับอยู่อีก endpoint หนึ่ง — ดึงมาด้วยจะได้ไม่ต้องรอ
+    pending: list[dict] = []
+    try:
+        invites = await _github_get(
+            token, f"https://api.github.com/repos/{repo}/invitations", {"per_page": 100}
+        )
+        pending = [i["invitee"] for i in invites if i.get("invitee")]
+    except HTTPException:
+        # ต้องมีสิทธิ์ admin ถึงจะอ่านคำเชิญได้ — ถ้าอ่านไม่ได้ก็ข้ามไป
+        pending = []
+
+    seen = {str(p["id"]) for p in people}
+    everyone = people + [p for p in pending if str(p["id"]) not in seen]
+
+    created, updated, touched = await _upsert_people(session, token, everyone)
     return ImportResult(
         org=repo,
         created=created,
         updated=updated,
+        pending=len(pending),
         members=[MemberOut.model_validate(m) for m in touched],
     )
 
 
 @router.get("/commits", response_model=list[CommitOut])
-async def commits(limit: int = 10) -> list[CommitOut]:
+async def commits(
+    limit: int = 10,
+    member: Member | None = Depends(current_member),
+) -> list[CommitOut]:
     """ดึง commit ล่าสุดจาก repo ที่ตั้งไว้ใน GITHUB_REPO"""
     settings = get_settings()
     if not settings.github_repo:
@@ -201,6 +221,9 @@ async def commits(limit: int = 10) -> list[CommitOut]:
 
     url = f"https://api.github.com/repos/{settings.github_repo}/commits"
     headers = {"Accept": "application/vnd.github+json"}
+    # repo ส่วนตัวต้องมี token ถึงจะอ่านได้ — ใช้ของคนที่ล็อกอินอยู่
+    if member is not None and member.github_token:
+        headers["Authorization"] = f"Bearer {member.github_token}"
     try:
         async with httpx.AsyncClient(timeout=30) as client:
             res = await client.get(url, headers=headers, params={"per_page": min(limit, 30)})
