@@ -1,0 +1,28 @@
+# override สำหรับ dev (hot reload):
+#   docker compose -f docker-compose.yml -f docker-compose.dev.yml up --build
+
+services:
+  api:
+    build:
+      target: dev
+    environment:
+      ENV: development
+      CORS_ORIGIN: http://localhost:5173
+      # bind mount จาก Windows ไม่ส่ง inotify event — ให้ uvicorn คอยเช็คเองแทน
+      WATCHFILES_FORCE_POLLING: "true"
+    volumes:
+      - ./backend/app:/app/app
+      - ./backend/pyproject.toml:/app/pyproject.toml
+
+  web:
+    build:
+      target: dev
+    environment:
+      NODE_ENV: development
+      VITE_PROXY_TARGET: http://api:3000
+      VITE_POLLING: "true"
+    ports:
+      - "${WEB_PORT:-5173}:5173"
+    volumes:
+      - ./frontend:/app/frontend
+      - /app/frontend/node_modules

@@ -1,0 +1,11 @@
+fastapi>=0.115
+uvicorn[standard]>=0.30
+pydantic>=2.9
+pydantic-settings>=2.4
+sqlalchemy[asyncio]>=2.0
+alembic>=1.13
+asyncpg>=0.29
+# เรียก Gemini / GitHub ผ่าน REST — ไม่ผูกกับ SDK ที่เปลี่ยนบ่อย
+httpx>=0.27
+# เซ็น session cookie
+itsdangerous>=2.2

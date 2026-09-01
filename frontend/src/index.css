@@ -1,0 +1,210 @@
+/*
+ * ธีมของ dashboard — ทุกธีมนิยาม token ชุดเดียวกัน
+ * สลับด้วย document.documentElement.dataset.theme (ดู src/themes.ts)
+ */
+
+/* ---------- Midnight (ค่าเริ่มต้น) ---------- */
+:root,
+:root[data-theme="midnight"] {
+  --bg-app: #141414;
+  --bg-sidebar: #171717;
+  --bg-card: #232323;
+  --bg-pop: #1f1f1f;
+  --bg-hover: #2a2a2a;
+  --bg-active: #303030;
+
+  --border: #2b2b2b;
+  --border-strong: #3a3a3a;
+
+  --text-strong: #ececec;
+  --text: #c4c4c4;
+  --text-dim: #9a9a9a;
+  --text-faint: #6e6e6e;
+
+  --accent: #7b68ee;
+  --accent-hover: #6a55e8;
+  --accent-soft: rgba(123, 104, 238, 0.14);
+  --accent-text: #b3a7ff;
+  --accent-ink: #ffffff;
+
+  --status-todo: #9a9a9a;
+  --status-progress: #2f80ff;
+  --status-complete: #22c55e;
+  --danger: #e5484d;
+
+  --scroll: #333333;
+  --scroll-hover: #444444;
+  --shadow: 0 12px 32px rgba(0, 0, 0, 0.5);
+}
+
+/* ---------- Light ---------- */
+:root[data-theme="light"] {
+  --bg-app: #ffffff;
+  --bg-sidebar: #f7f7f8;
+  /* การ์ดต้องเข้มกว่าพื้นเล็กน้อย ไม่งั้นขาวบนขาวจนมองไม่เห็นเป็นการ์ด */
+  --bg-card: #f3f3f6;
+  --bg-pop: #ffffff;
+  --bg-hover: #eae9f0;
+  --bg-active: #e4e1fa;
+
+  --border: #e3e3e6;
+  --border-strong: #cfcfd5;
+
+  --text-strong: #1b1b1f;
+  --text: #45454b;
+  --text-dim: #6b6b73;
+  --text-faint: #96969e;
+
+  --accent: #7b68ee;
+  --accent-hover: #6a55e8;
+  --accent-soft: rgba(123, 104, 238, 0.12);
+  --accent-text: #5b47d6;
+  --accent-ink: #ffffff;
+
+  --status-todo: #7b7b85;
+  --status-progress: #2f80ff;
+  --status-complete: #16a34a;
+  --danger: #d92d33;
+  --prio-high: #b45309;
+
+  --scroll: #cdcdd4;
+  --scroll-hover: #b6b6bf;
+  --shadow: 0 12px 32px rgba(0, 0, 0, 0.14);
+
+  color-scheme: light;
+}
+
+/* ---------- Ocean ---------- */
+:root[data-theme="ocean"] {
+  --bg-app: #0d1524;
+  --bg-sidebar: #0a1120;
+  --bg-card: #182742;
+  --bg-pop: #14213a;
+  --bg-hover: #1e3050;
+  --bg-active: #263c63;
+
+  --border: #1e2d47;
+  --border-strong: #2c4166;
+
+  --text-strong: #e6eefb;
+  --text: #b9c8dd;
+  --text-dim: #8598b3;
+  --text-faint: #5d6f8c;
+
+  --accent: #38bdf8;
+  --accent-hover: #22a7e6;
+  --accent-soft: rgba(56, 189, 248, 0.14);
+  --accent-text: #7dd3fc;
+  --accent-ink: #06283d;
+
+  --status-todo: #8598b3;
+  --status-progress: #38bdf8;
+  --status-complete: #34d399;
+  --danger: #f87171;
+
+  --scroll: #274064;
+  --scroll-hover: #33517d;
+  --shadow: 0 12px 32px rgba(0, 0, 0, 0.55);
+}
+
+/* ---------- Forest ---------- */
+:root[data-theme="forest"] {
+  --bg-app: #101613;
+  --bg-sidebar: #0d1310;
+  --bg-card: #1c2822;
+  --bg-pop: #18231d;
+  --bg-hover: #24332b;
+  --bg-active: #2c3f34;
+
+  --border: #223029;
+  --border-strong: #31453a;
+
+  --text-strong: #e8f2ea;
+  --text: #c0d0c5;
+  --text-dim: #92a598;
+  --text-faint: #6b7d71;
+
+  --accent: #22c55e;
+  --accent-hover: #16a34a;
+  --accent-soft: rgba(34, 197, 94, 0.14);
+  --accent-text: #6ee7a5;
+  --accent-ink: #05230f;
+
+  --status-todo: #92a598;
+  --status-progress: #38bdf8;
+  --status-complete: #22c55e;
+  --danger: #f87171;
+
+  --scroll: #2c3f34;
+  --scroll-hover: #3a5244;
+  --shadow: 0 12px 32px rgba(0, 0, 0, 0.5);
+}
+
+/* ---------- Sunset ---------- */
+:root[data-theme="sunset"] {
+  --bg-app: #191316;
+  --bg-sidebar: #150f12;
+  --bg-card: #2a2124;
+  --bg-pop: #241b1f;
+  --bg-hover: #33282c;
+  --bg-active: #3d3035;
+
+  --border: #322629;
+  --border-strong: #45363a;
+
+  --text-strong: #f4e9e6;
+  --text: #d3c2bd;
+  --text-dim: #a8938d;
+  --text-faint: #7d6b66;
+
+  --accent: #f97316;
+  --accent-hover: #ea630a;
+  --accent-soft: rgba(249, 115, 22, 0.14);
+  --accent-text: #fdba74;
+  --accent-ink: #2b1103;
+
+  --status-todo: #a8938d;
+  --status-progress: #f59e0b;
+  --status-complete: #22c55e;
+  --danger: #ef4444;
+
+  --scroll: #3d3035;
+  --scroll-hover: #4d3c42;
+  --shadow: 0 12px 32px rgba(0, 0, 0, 0.5);
+}
+
+:root {
+  --sans: "Inter", system-ui, "Segoe UI", Roboto, sans-serif;
+  --mono: ui-monospace, "Cascadia Mono", Consolas, monospace;
+
+  /* สีความสำคัญระดับ "สูง" — ธีม Light เขียนทับด้านบน */
+  --prio-high: #f5a524;
+
+  font: 14px/1.45 var(--sans);
+  color: var(--text);
+  background: var(--bg-app);
+  color-scheme: dark;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+* { box-sizing: border-box; }
+
+html,
+body,
+#root {
+  height: 100%;
+  margin: 0;
+}
+
+body {
+  background: var(--bg-app);
+  color: var(--text);
+}
+
+button { font-family: inherit; }
+
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--scroll); border: 3px solid var(--bg-app); border-radius: 999px; }
+::-webkit-scrollbar-thumb:hover { background: var(--scroll-hover); }

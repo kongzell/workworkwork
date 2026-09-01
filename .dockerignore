@@ -1,0 +1,46 @@
+# dependencies (ให้ติดตั้งใหม่ใน image เสมอ)
+node_modules
+**/node_modules
+
+# build output
+**/dist
+**/dist-ssr
+**/build
+
+# python
+__pycache__
+**/__pycache__
+*.py[cod]
+.venv
+**/.venv
+.pytest_cache
+**/.pytest_cache
+.ruff_cache
+**/.ruff_cache
+*.db
+**/*.db
+
+# git / editor
+.git
+.gitignore
+.vscode
+.idea
+.DS_Store
+
+# secrets — ห้ามหลุดเข้า image (ใช้ env จาก compose แทน)
+.env
+.env.*
+**/.env
+**/.env.*
+!**/.env.example
+
+# docker เอง
+Dockerfile
+**/Dockerfile
+.dockerignore
+docker-compose*.yml
+
+# อื่น ๆ
+*.log
+npm-debug.log*
+coverage

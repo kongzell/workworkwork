@@ -1,0 +1,148 @@
+"""เรียก Gemini ให้แตกงานใหญ่เป็นงานย่อย พร้อมจัดหมวดหมู่ / tag / ประเมินเวลา
+
+เรียกผ่าน REST ตรง ๆ ไม่ผ่าน SDK เพื่อไม่ต้องตามเวอร์ชัน SDK
+และใช้ structured output (responseSchema) เพื่อให้ได้ JSON ที่ parse ได้แน่นอน
+ไม่ต้องมานั่งแกะ markdown code fence
+"""
+
+import json
+
+import httpx
+from fastapi import HTTPException
+
+from app.config import get_settings
+from app.schemas import BreakdownResult, SubtaskSuggestion
+
+ENDPOINT = "https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent"
+
+CATEGORIES = ["Frontend", "Backend", "Database", "Design", "DevOps", "Testing", "Other"]
+COMPLEXITIES = ["low", "medium", "high"]
+
+# บังคับรูปแบบผลลัพธ์ ไม่ให้โมเดลตอบเป็นข้อความอิสระ
+RESPONSE_SCHEMA = {
+    "type": "object",
+    "properties": {
+        "summary": {"type": "string"},
+        "subtasks": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "title": {"type": "string"},
+                    "category": {"type": "string", "enum": CATEGORIES},
+                    "tags": {"type": "array", "items": {"type": "string"}},
+                    "estimateHours": {"type": "number"},
+                    "complexity": {"type": "string", "enum": COMPLEXITIES},
+                    "reason": {"type": "string"},
+                },
+                "required": ["title", "category", "tags", "estimateHours", "complexity"],
+            },
+        },
+    },
+    "required": ["summary", "subtasks"],
+}
+
+PROMPT = """คุณคือ tech lead ที่ช่วยแตกงานให้ทีมพัฒนาซอฟต์แวร์
+
+งานที่ได้รับมา: "{title}"
+{context}
+
+แตกงานนี้เป็นงานย่อยที่ลงมือทำได้จริงและเช็คลิสต์ได้ ตามกติกานี้:
+
+1. งานย่อยแต่ละข้อต้องเป็นสิ่งที่ "ทำแล้วรู้ว่าเสร็จ" เช่น "สร้างปุ่ม Add to Cart",
+   "เขียน API ตัดสต็อก", "ออกแบบตารางข้อมูลสินค้า" — ห้ามเป็นงานกว้าง ๆ อย่าง "ทำ frontend"
+2. ตั้งชื่องานย่อยเป็นภาษาไทย แต่คำเทคนิค ชื่อ library ชื่อ endpoint ให้คงเป็นภาษาอังกฤษ
+3. category เลือกจาก: {categories}
+4. tags คือทักษะ/เครื่องมือ/ภาษาที่ต้องใช้จริงกับงานย่อยนั้น เช่น React, TypeScript, PostgreSQL,
+   REST API — ใส่ 1-4 อัน ห้ามใส่คำกว้างอย่าง "coding" หรือ "programming"
+5. estimateHours คือชั่วโมงที่นักพัฒนาระดับกลางน่าจะใช้ ให้เป็นตัวเลขที่สมจริง (0.5-16)
+6. complexity: low = ตรงไปตรงมา, medium = ต้องคิดออกแบบบ้าง, high = มีความเสี่ยง/ของใหม่/กระทบหลายส่วน
+7. reason อธิบายสั้น ๆ ว่าทำไมถึงประเมินความยากระดับนั้น (ไม่เกิน 1 บรรทัด)
+8. แตกประมาณ {count} งานย่อย แต่ปรับจำนวนได้ตามความเหมาะสมของงาน (อย่างน้อย 3)
+   งานเล็กไม่ต้องยัดให้ครบ งานใหญ่แตกเพิ่มได้ เรียงตามลำดับที่ควรลงมือทำก่อนหลัง
+
+summary คือสรุปหนึ่งประโยคว่างานนี้โดยรวมคืออะไร"""
+
+MOCK = BreakdownResult(
+    summary="[ตัวอย่าง] ระบบตะกร้าสินค้าฝั่งหน้าร้านและหลังบ้าน",
+    mock=True,
+    subtasks=[
+        SubtaskSuggestion(
+            title="ออกแบบตารางข้อมูล cart และ cart_items",
+            category="Database", tags=["PostgreSQL", "SQLAlchemy"],
+            estimate_hours=2, complexity="medium",
+            reason="ต้องคิดเรื่องความสัมพันธ์กับตารางสินค้าให้จบตั้งแต่แรก",
+        ),
+        SubtaskSuggestion(
+            title="เขียน API เพิ่มสินค้าลงตะกร้า",
+            category="Backend", tags=["FastAPI", "REST API"],
+            estimate_hours=3, complexity="medium",
+            reason="ต้องกันกรณีสินค้าซ้ำและสต็อกไม่พอ",
+        ),
+        SubtaskSuggestion(
+            title="สร้างปุ่ม Add to Cart",
+            category="Frontend", tags=["React", "TypeScript"],
+            estimate_hours=1.5, complexity="low",
+            reason="เป็นงาน UI ตรงไปตรงมา",
+        ),
+        SubtaskSuggestion(
+            title="เขียน API ตัดสต็อกตอนยืนยันคำสั่งซื้อ",
+            category="Backend", tags=["FastAPI", "Transaction"],
+            estimate_hours=4, complexity="high",
+            reason="ต้องกันสต็อกติดลบเมื่อมีคนสั่งพร้อมกัน",
+        ),
+    ],
+)
+
+
+async def breakdown(title: str, context: str = "", count: int = 5) -> BreakdownResult:
+    settings = get_settings()
+
+    if settings.ai_mock and not settings.gemini_api_key:
+        return MOCK.model_copy(update={"summary": f"[ตัวอย่าง] {title}"})
+
+    if not settings.gemini_api_key:
+        raise HTTPException(
+            503,
+            "ยังไม่ได้ตั้ง GEMINI_API_KEY — ขอ key ที่ https://aistudio.google.com/apikey "
+            "แล้วใส่ในไฟล์ .env (หรือตั้ง AI_MOCK=true เพื่อลอง UI ด้วยข้อมูลตัวอย่างก่อน)",
+        )
+
+    prompt = PROMPT.format(
+        title=title,
+        context=f"ข้อมูลเพิ่มเติมจากผู้ใช้: {context}" if context.strip() else "",
+        categories=", ".join(CATEGORIES),
+        count=count,
+    )
+
+    payload = {
+        "contents": [{"parts": [{"text": prompt}]}],
+        "generationConfig": {
+            "responseMimeType": "application/json",
+            "responseSchema": RESPONSE_SCHEMA,
+            "temperature": 0.4,
+        },
+    }
+
+    url = ENDPOINT.format(model=settings.gemini_model)
+    try:
+        # โมเดลรุ่นใหม่ใช้เวลาคิดนานกว่าเดิม เผื่อเวลาไว้เยอะหน่อย
+        async with httpx.AsyncClient(timeout=180) as client:
+            res = await client.post(
+                url, json=payload, headers={"x-goog-api-key": settings.gemini_api_key}
+            )
+    except httpx.HTTPError as exc:
+        # ข้อความของ timeout เป็นสตริงว่าง ต้องเอาชื่อคลาสมาบอกด้วยถึงจะรู้เรื่อง
+        raise HTTPException(502, f"ต่อ Gemini ไม่ได้ ({type(exc).__name__}): {exc}") from exc
+
+    if res.status_code != 200:
+        detail = res.text[:300]
+        raise HTTPException(502, f"Gemini ตอบกลับ {res.status_code}: {detail}")
+
+    try:
+        text = res.json()["candidates"][0]["content"]["parts"][0]["text"]
+        data = json.loads(text)
+    except (KeyError, IndexError, ValueError) as exc:
+        raise HTTPException(502, f"อ่านคำตอบจาก Gemini ไม่ได้: {exc}") from exc
+
+    return BreakdownResult.model_validate({**data, "mock": False})

@@ -1,0 +1,15 @@
+# แทนที่ tsconfig.json เดิม — ที่รวม config ของเครื่องมือฝั่ง Python
+# dependency อยู่ใน requirements.txt / requirements-dev.txt
+
+[tool.ruff]
+target-version = "py313"
+line-length = 100
+# ไฟล์ migration alembic สร้างเอง ไม่ต้องบังคับสไตล์
+extend-exclude = ["alembic/versions"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B"]
+
+[tool.ruff.lint.flake8-bugbear]
+# Depends() ใน default argument คือวิธีมาตรฐานของ FastAPI ไม่ใช่บั๊ก
+extend-immutable-calls = ["fastapi.Depends"]

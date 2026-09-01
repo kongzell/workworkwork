@@ -1,0 +1,70 @@
+name: follow-up
+
+services:
+  db:
+    image: postgres:18-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-followup}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-followup}
+      POSTGRES_DB: ${POSTGRES_DB:-followup}
+    ports:
+      - "${DB_PORT:-5432}:5432"
+    volumes:
+      - db-data:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-followup} -d ${POSTGRES_DB:-followup}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+
+  api:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+      target: runner
+    restart: unless-stopped
+    init: true
+    environment:
+      ENV: production
+      PORT: 3000
+      CORS_ORIGIN: ${CORS_ORIGIN:-http://localhost:8081}
+      DATABASE_URL: postgresql://${POSTGRES_USER:-followup}:${POSTGRES_PASSWORD:-followup}@db:5432/${POSTGRES_DB:-followup}
+      GEMINI_API_KEY: ${GEMINI_API_KEY:-}
+      GEMINI_MODEL: ${GEMINI_MODEL:-gemini-3.6-flash}
+      AI_MOCK: ${AI_MOCK:-false}
+      GITHUB_CLIENT_ID: ${GITHUB_CLIENT_ID:-}
+      GITHUB_CLIENT_SECRET: ${GITHUB_CLIENT_SECRET:-}
+      GITHUB_CALLBACK_URL: ${GITHUB_CALLBACK_URL:-http://localhost:8081/api/auth/github/callback}
+      GITHUB_REPO: ${GITHUB_REPO:-}
+      GITHUB_WEBHOOK_SECRET: ${GITHUB_WEBHOOK_SECRET:-}
+      SESSION_SECRET: ${SESSION_SECRET:-dev-secret-change-me}
+      AUTH_MOCK: ${AUTH_MOCK:-false}
+    ports:
+      - "${API_PORT:-3000}:3000"
+    depends_on:
+      db:
+        condition: service_healthy
+    healthcheck:
+      # image python:slim ไม่มี wget/curl — เรียกผ่าน stdlib แทน
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:3000/api/health')"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+  web:
+    build:
+      context: .
+      dockerfile: frontend/Dockerfile
+      target: runner
+    restart: unless-stopped
+    ports:
+      - "${WEB_PORT:-8081}:80"
+    depends_on:
+      api:
+        condition: service_healthy
+
+volumes:
+  db-data:

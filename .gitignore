@@ -1,0 +1,42 @@
+# --- node / frontend ---
+node_modules
+dist
+dist-ssr
+*.local
+.vite
+
+# --- python / backend ---
+.venv
+__pycache__/
+*.py[cod]
+.ruff_cache
+.pytest_cache
+# ไฟล์ sqlite ตอน dev
+*.db
+
+# --- secrets ---
+# .env มีค่าจริงของแต่ละเครื่อง — commit เฉพาะ .env.example
+.env
+.env.*
+!.env.example
+
+# --- logs ---
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+# --- editor / os ---
+.vscode/*
+!.vscode/extensions.json
+.idea
+.DS_Store
+Thumbs.db
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
