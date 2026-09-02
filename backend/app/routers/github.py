@@ -19,7 +19,6 @@ from app.db import get_session
 from app.models import Member, WebhookEvent
 from app.schemas import (
     CommitOut,
-    GithubOrg,
     GithubRepo,
     ImportResult,
     MemberOut,
@@ -64,13 +63,6 @@ def _need_token(member: Member) -> str:
             "บัญชีนี้ไม่ได้เข้าสู่ระบบผ่าน GitHub — ออกจากระบบแล้วกด 'เข้าสู่ระบบด้วย GitHub' ก่อน",
         )
     return member.github_token
-
-
-@router.get("/orgs", response_model=list[GithubOrg])
-async def my_orgs(member: Member = Depends(require_member)) -> list[dict]:
-    """organization ทั้งหมดที่คนที่ล็อกอินอยู่เป็นสมาชิก"""
-    rows = await _github_get(_need_token(member), "https://api.github.com/user/orgs")
-    return [{"login": o["login"], "avatar_url": o.get("avatar_url")} for o in rows]
 
 
 async def _upsert_people(
@@ -132,26 +124,6 @@ async def my_repos(member: Member = Depends(require_member)) -> list[dict]:
         for r in rows
         if (r.get("permissions") or {}).get("push")
     ]
-
-
-@router.post("/import-members", response_model=ImportResult)
-async def import_members(
-    org: str,
-    member: Member = Depends(require_member),
-    session: AsyncSession = Depends(get_session),
-) -> ImportResult:
-    """ดึงสมาชิกของ organization มาสร้างเป็นพนักงานในระบบ"""
-    token = _need_token(member)
-    people = await _github_get(
-        token, f"https://api.github.com/orgs/{org}/members", {"per_page": 100}
-    )
-    created, updated, touched = await _upsert_people(session, token, people)
-    return ImportResult(
-        org=org,
-        created=created,
-        updated=updated,
-        members=[MemberOut.model_validate(m) for m in touched],
-    )
 
 
 @router.post("/import-collaborators", response_model=ImportResult)

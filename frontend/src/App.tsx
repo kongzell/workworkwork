@@ -385,6 +385,7 @@ export default function App() {
       {memberModalOpen && project && (
         <AddMemberModal
           projectName={project.name}
+          githubRepo={project.githubRepo}
           members={projectMembers}
           available={availableMembers}
           onClose={() => setMemberModalOpen(false)}

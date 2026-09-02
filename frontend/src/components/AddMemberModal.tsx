@@ -1,6 +1,5 @@
 import { useEffect, useState } from "react"
-import type { GithubOrg, GithubRepo } from "../api"
-import { getMyOrgs, getMyRepos, importOrgMembers, importRepoCollaborators } from "../api"
+import { importRepoCollaborators } from "../api"
 import type { Member } from "../types"
 import { MEMBER_COLORS, ROLES } from "../types"
 import { Avatar } from "./Avatar"
@@ -9,6 +8,8 @@ import "./Modal.css"
 
 type Props = {
   projectName: string
+  /** repo ที่โปรเจคนี้ผูกอยู่ เช่น "kongzell/...3" — null เมื่อสร้างโปรเจคเปล่า */
+  githubRepo: string | null
   /** พนักงานที่อยู่ในโปรเจคนี้แล้ว */
   members: Member[]
   /** พนักงานใน workspace ที่ยังไม่ได้อยู่ในโปรเจคนี้ */
@@ -22,7 +23,8 @@ type Props = {
 }
 
 export function AddMemberModal({
-  projectName, members, available, onClose, onAddExisting, onRemove, onCreate, onImported,
+  projectName, githubRepo, members, available, onClose, onAddExisting, onRemove, onCreate,
+  onImported,
 }: Props) {
   const [name, setName] = useState("")
   const [role, setRole] = useState(ROLES[0])
@@ -110,7 +112,7 @@ export function AddMemberModal({
             </section>
           )}
 
-          <GithubImport onImported={onImported} />
+          {githubRepo && <GithubImport repo={githubRepo} onImported={onImported} />}
 
           <section className="modal-section">
             <h3 className="modal-h3">เพิ่มพนักงานใหม่</h3>
@@ -172,53 +174,20 @@ export function AddMemberModal({
   )
 }
 
-/** ดึงรายชื่อจาก GitHub — เลือกได้ว่าจะเอาจาก repo หรือ organization */
-function GithubImport({ onImported }: { onImported: () => void }) {
-  const [source, setSource] = useState<"repo" | "org">("repo")
-  const [repos, setRepos] = useState<GithubRepo[] | null>(null)
-  const [orgs, setOrgs] = useState<GithubOrg[] | null>(null)
+/** ซิงค์ collaborator ของ repo ที่โปรเจคนี้ผูกอยู่ — ใช้ตอนมีคนเข้า repo เพิ่มทีหลัง */
+function GithubImport({ repo, onImported }: { repo: string; onImported: () => void }) {
   const [busy, setBusy] = useState(false)
   const [message, setMessage] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
 
-  const reset = () => {
+  const sync = async () => {
     setMessage(null)
     setError(null)
-  }
-
-  const load = async (next: "repo" | "org") => {
-    setSource(next)
-    reset()
     setBusy(true)
     try {
-      if (next === "repo") {
-        const rows = await getMyRepos()
-        setRepos(rows)
-        if (rows.length === 0) setMessage("ไม่เจอ repo ที่คุณมีสิทธิ์ push")
-      } else {
-        const rows = await getMyOrgs()
-        setOrgs(rows)
-        if (rows.length === 0) setMessage("บัญชีนี้ยังไม่ได้อยู่ organization ไหน")
-      }
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "ดึงรายชื่อไม่สำเร็จ")
-    } finally {
-      setBusy(false)
-    }
-  }
-
-  const runImport = async (name: string) => {
-    reset()
-    setBusy(true)
-    try {
-      const result =
-        source === "repo"
-          ? await importRepoCollaborators(name)
-          : await importOrgMembers(name)
-      const pendingNote = result.pending > 0 ? ` (ในนั้นยังไม่ตอบรับคำเชิญ ${result.pending} คน)` : ""
-      setMessage(
-        `ดึงจาก ${result.org} แล้ว — เพิ่มใหม่ ${result.created} คน, อัปเดต ${result.updated} คน${pendingNote}`,
-      )
+      const result = await importRepoCollaborators(repo)
+      const pendingNote = result.pending > 0 ? ` (ยังไม่ตอบรับคำเชิญ ${result.pending} คน)` : ""
+      setMessage(`เพิ่มใหม่ ${result.created} คน, อัปเดต ${result.updated} คน${pendingNote}`)
       onImported()
     } catch (e) {
       setError(e instanceof Error ? e.message : "ดึงรายชื่อไม่สำเร็จ")
@@ -227,67 +196,17 @@ function GithubImport({ onImported }: { onImported: () => void }) {
     }
   }
 
-  const rows =
-    source === "repo"
-      ? (repos ?? []).map((r) => ({ key: r.fullName, label: r.fullName, note: r.private ? "private" : "public" }))
-      : (orgs ?? []).map((o) => ({ key: o.login, label: o.login, note: "organization" }))
-
-  const loaded = source === "repo" ? repos !== null : orgs !== null
-
   return (
     <section className="modal-section">
-      <h3 className="modal-h3">ดึงรายชื่อจาก GitHub</h3>
+      <h3 className="modal-h3">ซิงค์สมาชิกจาก GitHub</h3>
 
-      <div className="gh-source">
-        <button
-          type="button"
-          className={`gh-tab${source === "repo" ? " is-on" : ""}`}
-          onClick={() => load("repo")}
-          disabled={busy}
-        >
-          จาก repository
-        </button>
-        <button
-          type="button"
-          className={`gh-tab${source === "org" ? " is-on" : ""}`}
-          onClick={() => load("org")}
-          disabled={busy}
-        >
-          จาก organization
-        </button>
-      </div>
+      <button type="button" className="btn" disabled={busy} onClick={() => void sync()}>
+        {busy ? "กำลังดึง..." : `ดึง collaborator ของ ${repo}`}
+      </button>
 
-      {!loaded && !busy && (
-        <p className="modal-hint">
-          {source === "repo"
-            ? "ดึง collaborator ทุกคนของ repo — เห็นทันทีที่ถูกเชิญ ไม่ต้องรอ commit"
-            : "ดึงสมาชิกทั้งหมดของ organization"}
-        </p>
+      {!message && !error && (
+        <p className="modal-hint">ใช้ตอนมีคนเข้า repo เพิ่มหลังจากสร้างโปรเจคไปแล้ว</p>
       )}
-
-      {busy && <p className="modal-hint">กำลังโหลด...</p>}
-
-      {loaded && rows.length > 0 && (
-        <ul className="member-list gh-list">
-          {rows.map((r) => (
-            <li key={r.key} className="member-row">
-              <span className="member-info">
-                <span className="member-name">{r.label}</span>
-                <span className="member-role">{r.note}</span>
-              </span>
-              <button
-                type="button"
-                className="member-action"
-                disabled={busy}
-                onClick={() => runImport(r.key)}
-              >
-                ดึงสมาชิก
-              </button>
-            </li>
-          ))}
-        </ul>
-      )}
-
       {message && <p className="modal-hint">{message}</p>}
       {error && <p className="modal-error">{error}</p>}
     </section>

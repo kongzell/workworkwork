@@ -194,8 +194,6 @@ GitHub ไม่มีข้อมูลนี้ ต้องเลือกเ
 ```
 GET  /api/github/repos                              repo ที่มีสิทธิ์ push
 POST /api/github/import-collaborators?repo=owner/x  ดึง collaborator ของ repo
-GET  /api/github/orgs                               organization ที่เป็นสมาชิก
-POST /api/github/import-members?org=<org>           ดึงสมาชิกของ org
 ```
 
 **เงื่อนไข**

@@ -161,11 +161,6 @@ class WebhookEventOut(ApiModel):
     received_at: datetime
 
 
-class GithubOrg(ApiModel):
-    login: str
-    avatar_url: str | None = None
-
-
 class GithubRepo(ApiModel):
     full_name: str
     private: bool

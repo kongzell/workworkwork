@@ -255,8 +255,6 @@ export async function createMemberApi(
 
 // ---------- ดึงรายชื่อจาก GitHub ----------
 
-export type GithubOrg = { login: string; avatarUrl: string | null }
-
 export type ImportResult = {
   org: string
   created: number
@@ -266,21 +264,7 @@ export type ImportResult = {
   members: ApiMember[]
 }
 
-export async function getMyOrgs(): Promise<GithubOrg[]> {
-  const res = await fetch("/api/github/orgs")
-  if (!res.ok) throw new Error(await readError(res))
-  return res.json()
-}
-
 export type GithubRepo = { fullName: string; private: boolean }
-
-export async function importOrgMembers(org: string): Promise<ImportResult> {
-  const res = await fetch(`/api/github/import-members?org=${encodeURIComponent(org)}`, {
-    method: "POST",
-  })
-  if (!res.ok) throw new Error(await readError(res))
-  return res.json()
-}
 
 export async function getMyRepos(): Promise<GithubRepo[]> {
   const res = await fetch("/api/github/repos")

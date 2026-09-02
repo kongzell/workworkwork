@@ -117,23 +117,6 @@
 
 .color-dot.is-active { border-color: var(--text-strong); }
 
-.gh-source { display: flex; gap: 6px; margin-bottom: 4px; }
-
-.gh-tab {
-  padding: 5px 11px;
-  border: 1px solid var(--border-strong);
-  border-radius: 7px;
-  background: none;
-  color: var(--text-dim);
-  font: inherit;
-  font-size: 12.5px;
-  cursor: pointer;
-}
-
-.gh-tab:hover:not(:disabled) { background: var(--bg-hover); color: var(--text-strong); }
-.gh-tab.is-on { border-color: var(--accent); background: var(--accent-soft); color: var(--accent-text); font-weight: 600; }
-.gh-tab:disabled { opacity: 0.5; cursor: default; }
-
 .gh-list { max-height: 190px; overflow-y: auto; }
 
 .modal-hint {
