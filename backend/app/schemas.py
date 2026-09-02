@@ -142,12 +142,6 @@ class AuthStatus(ApiModel):
 
 # ---------- github ----------
 
-class GithubStatus(ApiModel):
-    oauth_configured: bool
-    repo: str | None
-    webhook_secret_set: bool
-
-
 class CommitOut(ApiModel):
     sha: str
     message: str

@@ -19,8 +19,6 @@ export type BreakdownResult = {
   mock: boolean
 }
 
-export type AiStatus = { ready: boolean; mock: boolean; model: string }
-
 async function readError(res: Response): Promise<string> {
   try {
     const body = await res.json()
@@ -29,12 +27,6 @@ async function readError(res: Response): Promise<string> {
     /* ไม่ใช่ JSON ก็ปล่อยไปใช้ข้อความมาตรฐาน */
   }
   return `เซิร์ฟเวอร์ตอบกลับ ${res.status}`
-}
-
-export async function getAiStatus(): Promise<AiStatus> {
-  const res = await fetch("/api/ai/status")
-  if (!res.ok) throw new Error(await readError(res))
-  return res.json()
 }
 
 export async function breakdownTask(

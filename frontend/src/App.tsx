@@ -10,7 +10,7 @@ import { AddMemberModal } from "./components/AddMemberModal"
 import { AddProjectModal } from "./components/AddProjectModal"
 import { AiBreakdownModal } from "./components/AiBreakdownModal"
 import { Board } from "./components/Board"
-import { RightSidebar, TaskDetailPanel } from "./components/RightSidebar"
+import { MemberDetailPanel, RightSidebar } from "./components/RightSidebar"
 import { Sidebar } from "./components/Sidebar"
 import { Topbar } from "./components/Topbar"
 import { IconGithub, IconSparkle } from "./components/Icons"
@@ -33,6 +33,7 @@ export default function App() {
   const [groupBy, setGroupBy] = useState<"status" | "category">("status")
   const [aiOpen, setAiOpen] = useState(false)
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null)
+  const [selectedMemberId, setSelectedMemberId] = useState<string | null>(null)
   const [starredIds, setStarredIds] = useState<string[]>([])
   const [theme, setTheme] = useState<ThemeId>(loadTheme)
   const [auth, setAuth] = useState<AuthStatus | null>(null)
@@ -116,9 +117,7 @@ export default function App() {
     [allMembers, project],
   )
 
-  const selectedTask = project?.tasks.find((t) => t.id === selectedTaskId) ?? null
-  const subtasks =
-    selectedTask && project ? project.tasks.filter((t) => t.parentId === selectedTask.id) : []
+  const selectedMember = projectMembers.find((m) => m.id === selectedMemberId) ?? null
 
   const addTask = (status: StatusId, title: string) => {
     if (!project) return
@@ -155,18 +154,37 @@ export default function App() {
   /** ลบงานแม่ — งานย่อยถูกลบตามด้วย cascade ที่ฝั่ง database */
   const deleteTask = (taskId: string) => void sync(() => api.deleteTask(taskId))
 
-  const toggleSubtaskDone = (id: string) => {
-    const task = project?.tasks.find((t) => t.id === id)
-    if (!task) return
-    void sync(() =>
-      api.updateTask(id, { status: task.status === "complete" ? "todo" : "complete" }),
-    )
-  }
-
+  /**
+   * มอบหมายงาน — ถ้าเป็นการเพิ่มคนให้งานที่ยัง "รอเริ่ม" จะย้ายไป "กำลังทำ" ให้เลย
+   * งานที่อยู่รอตรวจ/เสร็จแล้วไม่ถูกย้าย เพราะการเพิ่มคนตรงนั้นคือการหาคนมาตรวจ ไม่ใช่เริ่มทำใหม่
+   */
   const toggleAssignee = (taskId: string, memberId: string) => {
     const task = project?.tasks.find((t) => t.id === taskId)
     if (!task) return
-    void sync(() => api.setAssignee(taskId, memberId, !task.assigneeIds.includes(memberId)))
+    const adding = !task.assigneeIds.includes(memberId)
+    void sync(async () => {
+      await api.setAssignee(taskId, memberId, adding)
+      if (adding && task.status === "todo") {
+        await api.updateTask(taskId, { status: "in-progress" })
+      }
+    })
+  }
+
+  /** รับงานเอง — ถ้ายังไม่ได้อยู่ในโปรเจคจะถูกเพิ่มเข้าให้ด้วย */
+  const claimTask = (taskId: string) => {
+    const me = auth?.member
+    const task = project?.tasks.find((t) => t.id === taskId)
+    if (!me || !project || !task) return
+
+    void sync(async () => {
+      if (!project.memberIds.includes(me.id)) {
+        await api.addProjectMember(project.id, me.id)
+      }
+      await api.setAssignee(taskId, me.id, true)
+      if (task.status === "todo") {
+        await api.updateTask(taskId, { status: "in-progress" })
+      }
+    })
   }
 
   const addExistingMember = (memberId: string) => {
@@ -246,7 +264,7 @@ export default function App() {
         <Topbar
           project={project}
           projects={projects}
-          taskCount={project ? project.tasks.filter((t) => !t.parentId).length : 0}
+          taskCount={project ? project.tasks.length : 0}
           query={query}
           searchRef={searchRef}
           starred={project ? starredIds.includes(project.id) : false}
@@ -287,7 +305,10 @@ export default function App() {
             filters={filters}
             groupBy={groupBy}
             selectedTaskId={selectedTaskId}
-            onOpenTask={setSelectedTaskId}
+            currentMemberId={auth?.member?.id ?? null}
+            onClaimTask={claimTask}
+            onOpenTask={(id) => setSelectedTaskId(id || null)}
+            onSetSubtaskStatus={(id, status) => void sync(() => api.updateTask(id, { status }))}
             onAddTask={addTask}
             onChangeStatus={(taskId, status) => void sync(() => api.updateTask(taskId, { status }))}
             onToggleAssignee={toggleAssignee}
@@ -313,13 +334,21 @@ export default function App() {
           members={projectMembers}
           onOpenTaskRef={(ref) => setQuery(ref)}
           onAddMember={() => setMemberModalOpen(true)}
+          onOpenMember={(id) => {
+            setSelectedMemberId(id)
+            setSelectedTaskId(null)
+          }}
         />
-        {selectedTask && (
-          <TaskDetailPanel
-            task={selectedTask}
-            subtasks={subtasks}
-            onClose={() => setSelectedTaskId(null)}
-            onToggleSubtaskDone={toggleSubtaskDone}
+
+        {selectedMember && project && (
+          <MemberDetailPanel
+            member={selectedMember}
+            tasks={project.tasks}
+            onClose={() => setSelectedMemberId(null)}
+            onOpenTask={(id) => {
+              setSelectedMemberId(null)
+              setSelectedTaskId(id)
+            }}
           />
         )}
       </div>

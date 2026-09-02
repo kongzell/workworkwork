@@ -69,6 +69,26 @@ export const COMPLEXITIES: { id: Complexity; label: string; color: string }[] = 
   { id: "high", label: "ยาก", color: "var(--danger)" },
 ]
 
+/**
+ * แต้มภาระงานตามความยาก — ใช้วัด workload ของแต่ละคน
+ * งานที่ไม่ได้ระบุความยากให้ 2 แต้ม (ประมาณว่าปานกลางค่อนไปทางง่าย)
+ */
+export const COMPLEXITY_POINTS: Record<string, number> = {
+  low: 1,
+  medium: 3,
+  high: 5,
+}
+
+export const UNRATED_POINTS = 2
+
+/** แต้มของงานหนึ่งใบ */
+export const taskPoints = (t: Task): number =>
+  t.complexity ? (COMPLEXITY_POINTS[t.complexity] ?? UNRATED_POINTS) : UNRATED_POINTS
+
+/** งานที่ยังไม่เสร็จของคนคนหนึ่ง — ภาระที่ยังแบกอยู่จริง */
+export const openTasksOf = (tasks: Task[], memberId: string): Task[] =>
+  tasks.filter((t) => t.assigneeIds.includes(memberId) && t.status !== "complete")
+
 export const categoryColor = (name: string | null): string =>
   CATEGORIES.find((c) => c.id === name)?.color ?? "var(--text-faint)"
 

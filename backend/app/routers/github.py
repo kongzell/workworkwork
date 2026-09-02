@@ -21,7 +21,6 @@ from app.schemas import (
     CommitOut,
     GithubOrg,
     GithubRepo,
-    GithubStatus,
     ImportResult,
     MemberOut,
     WebhookEventOut,
@@ -31,16 +30,6 @@ router = APIRouter(prefix="/api/github", tags=["github"])
 
 #: รูปแบบรหัสงานที่อ่านจากข้อความ commit เช่น "แก้ UI หน้าล็อกอิน #TASK-001"
 TASK_REF = re.compile(r"#?(TASK-\d+)", re.IGNORECASE)
-
-
-@router.get("/status", response_model=GithubStatus)
-def status() -> GithubStatus:
-    settings = get_settings()
-    return GithubStatus(
-        oauth_configured=settings.github_ready,
-        repo=settings.github_repo or None,
-        webhook_secret_set=bool(settings.github_webhook_secret),
-    )
 
 
 # สีสุ่มให้คนที่ดึงเข้ามาใหม่ ให้ avatar แยกกันออกตอนยังไม่มีรูป

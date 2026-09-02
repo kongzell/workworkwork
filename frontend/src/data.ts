@@ -9,6 +9,3 @@ export const INITIAL_MEMBERS: Member[] = [
 
 /** ยังไม่มีโปรเจคตั้งต้น — สร้างเองในหน้าเว็บ หรือดึงมาจาก GitHub */
 export const INITIAL_PROJECTS: Project[] = []
-
-let seq = 100
-export const nextId = (prefix: string) => `${prefix}${++seq}`

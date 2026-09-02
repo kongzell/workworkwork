@@ -1,8 +1,10 @@
 import type { Member, PriorityId, StatusId, Task } from "../types"
-import { CATEGORIES, categoryColor, COMPLEXITIES, PRIORITIES, STATUSES } from "../types"
+import { CATEGORIES, categoryColor, COMPLEXITIES, PRIORITIES, STATUSES, taskPoints } from "../types"
 import { Avatar } from "./Avatar"
 import { Menu, MenuItem, MenuLabel } from "./Menu"
-import { IconCalendar, IconCheck, IconDots, IconFlag, IconPlus, IconTrash, IconUser } from "./Icons"
+import {
+  IconCalendar, IconCheck, IconDots, IconFlag, IconHand, IconPlus, IconTrash, IconUser,
+} from "./Icons"
 
 type Props = {
   task: Task
@@ -10,8 +12,14 @@ type Props = {
   members: Member[]
   /** งานย่อยของการ์ดใบนี้ (ถ้ามี) */
   subtasks: Task[]
-  selected: boolean
+  /** กางรายละเอียดอยู่หรือไม่ */
+  expanded: boolean
+  /** ล็อกอินอยู่และยังไม่มีใครรับงานนี้ */
+  canClaim: boolean
+  onClaim: () => void
   onOpen: () => void
+  onToggleSubtaskAssignee: (subtaskId: string, memberId: string) => void
+  onSetSubtaskStatus: (subtaskId: string, status: StatusId) => void
   onChangeStatus: (status: StatusId) => void
   onToggleAssignee: (memberId: string) => void
   onSetPriority: (priority: PriorityId) => void
@@ -25,13 +33,14 @@ const fmtDue = (iso: string) =>
   new Date(iso + "T00:00:00").toLocaleDateString("th-TH", { day: "numeric", month: "short" })
 
 export function TaskCard({
-  task, members, subtasks, selected, onOpen, onChangeStatus, onToggleAssignee,
+  task, members, subtasks, expanded, canClaim, onClaim, onOpen,
+  onToggleSubtaskAssignee, onSetSubtaskStatus, onChangeStatus, onToggleAssignee,
   onSetPriority, onSetDue, onSetCategory, onDelete, onAddMember,
 }: Props) {
   const assignees = members.filter((m) => task.assigneeIds.includes(m.id))
   const priority = PRIORITIES.find((p) => p.id === task.priority)!
   const hasPriority = task.priority !== "none"
-  const isBare = assignees.length === 0 && !task.dueDate && !hasPriority
+  const isBare = assignees.length === 0 && !task.dueDate && !hasPriority && !canClaim
   const complexity = COMPLEXITIES.find((c) => c.id === task.complexity)
   const subDone = subtasks.filter((s) => s.status === "complete").length
 
@@ -46,10 +55,15 @@ export function TaskCard({
 
   return (
     <article
-      className={`card p-${task.priority}${task.status === "complete" ? " is-done" : ""}${selected ? " is-selected" : ""}`}
+      className={`card p-${task.priority}${task.status === "complete" ? " is-done" : ""}${expanded ? " is-open" : ""}`}
     >
       <div className="card-head">
-        <button type="button" className="card-open" onClick={onOpen}>
+        <button
+          type="button"
+          className="card-open"
+          aria-expanded={expanded}
+          onClick={onOpen}
+        >
           <h3 className="card-title">{task.title}</h3>
         </button>
         <div className="card-more">
@@ -119,6 +133,16 @@ export function TaskCard({
       <div className="card-foot">
         <div className="card-meta">
           {assignees.map((m) => <Avatar key={m.id} member={m} size={20} />)}
+          {canClaim && (
+            <button
+              type="button"
+              className="card-claim"
+              title="รับงานนี้ไปทำ"
+              onClick={onClaim}
+            >
+              <IconHand size={12} /> รับงาน
+            </button>
+          )}
           {task.dueDate && <span className="card-date">{fmtDue(task.dueDate)}</span>}
           {hasPriority && (
             <span className="card-prio" style={{ color: priority.color }}>{priority.label}</span>
@@ -178,6 +202,144 @@ export function TaskCard({
           </Menu>
         </div>
       </div>
+
+      {expanded && (
+        <div className="card-detail">
+          <dl className="cd-fields">
+            <div>
+              <dt>หมวดหมู่</dt>
+              <dd style={task.category ? { color: categoryColor(task.category) } : undefined}>
+                {task.category ?? "—"}
+              </dd>
+            </div>
+            <div>
+              <dt>เวลาที่ประเมิน</dt>
+              <dd>{task.estimateHours ? `${task.estimateHours} ชม.` : "—"}</dd>
+            </div>
+            <div>
+              <dt>ความยาก</dt>
+              <dd style={complexity ? { color: complexity.color } : undefined}>
+                {complexity ? `${complexity.label} · ${taskPoints(task)} แต้ม` : "—"}
+              </dd>
+            </div>
+          </dl>
+
+          {task.tags.length > 0 && (
+            <div className="cd-block">
+              <span className="cd-label">ทักษะที่ต้องใช้</span>
+              <div className="cd-tags">
+                {task.tags.map((t) => (
+                  <span key={t} className="card-tag">{t}</span>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {subtasks.length > 0 && (
+          <div className="cd-block">
+            <span className="cd-label">
+              งานย่อย {subDone}/{subtasks.length}
+            </span>
+
+            {(
+              <ul className="cd-subs">
+                {subtasks.map((s) => {
+                  const owners = members.filter((m) => s.assigneeIds.includes(m.id))
+                  const cx = COMPLEXITIES.find((c) => c.id === s.complexity)
+                  return (
+                    <li key={s.id} className={s.status === "complete" ? "is-done" : ""}>
+                      <Menu
+                        align="left"
+                        title="สถานะของงานย่อย"
+                        trigger={() => {
+                          const st = STATUSES.find((x) => x.id === s.status)
+                          return (
+                            <span className="cd-status" style={{ color: st?.color }}>
+                              <span className="dot" style={{ background: st?.color }} />
+                              {st?.label}
+                            </span>
+                          )
+                        }}
+                      >
+                        {(close) => (
+                          <>
+                            <MenuLabel>ย้ายไปสถานะ</MenuLabel>
+                            {STATUSES.map((st) => (
+                              <MenuItem
+                                key={st.id}
+                                active={st.id === s.status}
+                                onClick={() => {
+                                  onSetSubtaskStatus(s.id, st.id)
+                                  close()
+                                }}
+                              >
+                                <span className="dot" style={{ background: st.color }} />
+                                <span className="menu-grow">{st.label}</span>
+                                {st.id === s.status && <IconCheck size={14} />}
+                              </MenuItem>
+                            ))}
+                          </>
+                        )}
+                      </Menu>
+
+                      <div className="cd-sub-body">
+                        <span className="cd-sub-title">{s.title}</span>
+                        <div className="cd-sub-meta">
+                          {s.category && (
+                            <span style={{ color: categoryColor(s.category) }}>{s.category}</span>
+                          )}
+                          {cx && <span style={{ color: cx.color }}>{cx.label}</span>}
+                          {s.estimateHours !== null && (
+                            <span className="cd-sub-hrs">{s.estimateHours} ชม.</span>
+                          )}
+
+                          <Menu
+                            align="right"
+                            title="ใครรับงานนี้"
+                            trigger={() =>
+                              owners.length > 0 ? (
+                                <span className="cd-owners">
+                                  {owners.map((m) => (
+                                    <Avatar key={m.id} member={m} size={17} />
+                                  ))}
+                                </span>
+                              ) : (
+                                <span className="cd-unassigned">ยังไม่มีใครรับ</span>
+                              )
+                            }
+                          >
+                            {() => (
+                              <>
+                                <MenuLabel>ผู้รับผิดชอบ</MenuLabel>
+                                {members.length === 0 && (
+                                  <div className="menu-empty">ยังไม่มีพนักงานในโปรเจค</div>
+                                )}
+                                {members.map((m) => (
+                                  <MenuItem
+                                    key={m.id}
+                                    active={s.assigneeIds.includes(m.id)}
+                                    onClick={() => onToggleSubtaskAssignee(s.id, m.id)}
+                                  >
+                                    <Avatar member={m} size={18} />
+                                    <span className="menu-grow">{m.name}</span>
+                                    {s.assigneeIds.includes(m.id) && <IconCheck size={14} />}
+                                  </MenuItem>
+                                ))}
+                              </>
+                            )}
+                          </Menu>
+                        </div>
+                      </div>
+
+                    </li>
+                  )
+                })}
+              </ul>
+            )}
+          </div>
+          )}
+        </div>
+      )}
     </article>
   )
 }

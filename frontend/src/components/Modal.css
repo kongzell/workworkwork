@@ -136,8 +136,6 @@
 
 .gh-list { max-height: 190px; overflow-y: auto; }
 
-.org-avatar { width: 30px; height: 30px; border-radius: 7px; flex: none; }
-
 .modal-hint {
   margin: 8px 0 0;
   font-size: 12.5px;

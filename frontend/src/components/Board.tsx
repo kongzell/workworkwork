@@ -15,7 +15,11 @@ type Props = {
   /** จัดคอลัมน์ตามสถานะ หรือตามหมวดหมู่ที่ AI ให้มา */
   groupBy: "status" | "category"
   selectedTaskId: string | null
+  /** id ของคนที่ล็อกอินอยู่ — null = ยังไม่ได้ล็อกอิน */
+  currentMemberId: string | null
+  onClaimTask: (taskId: string) => void
   onOpenTask: (id: string) => void
+  onSetSubtaskStatus: (id: string, status: StatusId) => void
   onAddTask: (status: StatusId, title: string) => void
   onChangeStatus: (taskId: string, status: StatusId) => void
   onToggleAssignee: (taskId: string, memberId: string) => void
@@ -28,15 +32,15 @@ type Props = {
 }
 
 export function Board({
-  project, members, query, filters, groupBy, selectedTaskId, onOpenTask,
-  onAddTask, onChangeStatus, onToggleAssignee,
+  project, members, query, filters, groupBy, selectedTaskId, currentMemberId,
+  onClaimTask, onOpenTask,
+  onSetSubtaskStatus, onAddTask, onChangeStatus, onToggleAssignee,
   onSetPriority, onSetDue, onSetCategory, onDeleteTask, onAddMember, onClearFilters,
 }: Props) {
   const visible = useMemo(() => {
     const q = query.trim().toLowerCase()
-    // งานย่อยไม่ขึ้นบนบอร์ด — ดูได้จากแผงรายละเอียดฝั่งขวา
+    // งานย่อยขึ้นบอร์ดด้วย — จะได้เห็นว่างานไหนกำลังทำ/รอตรวจ/เสร็จแล้ว
     return project.tasks.filter((t) => {
-      if (t.parentId) return false
       if (q && !t.title.toLowerCase().includes(q)) return false
       if (filters.assigneeId && !t.assigneeIds.includes(filters.assigneeId)) return false
       if (filters.priority && t.priority !== filters.priority) return false
@@ -44,8 +48,19 @@ export function Board({
     })
   }, [project.tasks, query, filters])
 
-  const boardTasks = project.tasks.filter((t) => !t.parentId)
-  const narrowed = visible.length < boardTasks.length
+  //: งานที่มีลูก จะไม่ขึ้นเป็นการ์ด แต่กลายเป็นหัวข้อคั่นกลุ่มแทน
+  const parentIds = new Set(
+    project.tasks.filter((t) => t.parentId).map((t) => t.parentId as string),
+  )
+  const cardsOf = (rows: Task[]) => rows.filter((t) => !parentIds.has(t.id))
+
+  /** ความคืบหน้าของกลุ่ม นับจากงานย่อยทั้งหมดไม่ว่าอยู่คอลัมน์ไหน */
+  const groupProgress = (parentId: string) => {
+    const all = project.tasks.filter((t) => t.parentId === parentId)
+    return { done: all.filter((t) => t.status === "complete").length, total: all.length }
+  }
+
+  const narrowed = cardsOf(visible).length < cardsOf(project.tasks).length
 
   /** คอลัมน์ที่จะแสดง — ตามสถานะ หรือตามหมวดหมู่ที่มีงานอยู่จริง */
   const columns =
@@ -78,7 +93,7 @@ export function Board({
     <div className="board-wrap">
       {narrowed && (
         <div className="board-note">
-          แสดง {visible.length} จาก {boardTasks.length} งาน
+          แสดง {cardsOf(visible).length} จาก {cardsOf(project.tasks).length} งาน
           <button type="button" className="board-note-clear" onClick={onClearFilters}>
             ล้างตัวกรอง
           </button>
@@ -87,7 +102,35 @@ export function Board({
 
       <div className={`board${groupBy === "category" ? " by-category" : ""}`}>
         {columns.map((col) => {
-          const tasks = col.tasks
+          const tasks = cardsOf(col.tasks)
+          //: งานที่ไม่ได้อยู่ใต้ใคร แสดงก่อน แล้วค่อยไล่เป็นกลุ่ม
+          const loose = tasks.filter((t) => !t.parentId)
+          const groupIds = [
+            ...new Set(tasks.filter((t) => t.parentId).map((t) => t.parentId as string)),
+          ]
+
+          const renderCard = (t: Task) => (
+            <TaskCard
+              key={t.id}
+              task={t}
+              members={members}
+              subtasks={project.tasks.filter((s) => s.parentId === t.id)}
+              expanded={t.id === selectedTaskId}
+              canClaim={currentMemberId !== null && t.assigneeIds.length === 0}
+              onClaim={() => onClaimTask(t.id)}
+              onOpen={() => onOpenTask(t.id === selectedTaskId ? "" : t.id)}
+              onSetSubtaskStatus={onSetSubtaskStatus}
+              onToggleSubtaskAssignee={onToggleAssignee}
+              onChangeStatus={(status) => onChangeStatus(t.id, status)}
+              onToggleAssignee={(memberId) => onToggleAssignee(t.id, memberId)}
+              onSetPriority={(p) => onSetPriority(t.id, p)}
+              onSetDue={(d) => onSetDue(t.id, d)}
+              onSetCategory={(c) => onSetCategory(t.id, c)}
+              onDelete={() => onDeleteTask(t.id)}
+              onAddMember={onAddMember}
+            />
+          )
+
           return (
             <section key={col.key} className="column">
               <header className="col-head" style={{ borderBottomColor: col.color }}>
@@ -95,23 +138,23 @@ export function Board({
                 <span className="col-count">{tasks.length}</span>
               </header>
 
-              {tasks.map((t: Task) => (
-                <TaskCard
-                  key={t.id}
-                  task={t}
-                  members={members}
-                  subtasks={project.tasks.filter((s) => s.parentId === t.id)}
-                  selected={t.id === selectedTaskId}
-                  onOpen={() => onOpenTask(t.id)}
-                  onChangeStatus={(status) => onChangeStatus(t.id, status)}
-                  onToggleAssignee={(memberId) => onToggleAssignee(t.id, memberId)}
-                  onSetPriority={(p) => onSetPriority(t.id, p)}
-                  onSetDue={(d) => onSetDue(t.id, d)}
-                  onSetCategory={(c) => onSetCategory(t.id, c)}
-                  onDelete={() => onDeleteTask(t.id)}
-                  onAddMember={onAddMember}
-                />
-              ))}
+              {loose.map(renderCard)}
+
+              {groupIds.map((pid) => {
+                const parent = project.tasks.find((p) => p.id === pid)
+                if (!parent) return null
+                const { done, total } = groupProgress(pid)
+                return (
+                  <div className="col-group" key={pid}>
+                    <div className="cg-head" title={parent.title}>
+                      <span className="cg-title">{parent.title}</span>
+                      <span className="cg-line" />
+                      <span className="cg-count">{done}/{total}</span>
+                    </div>
+                    {tasks.filter((t) => t.parentId === pid).map(renderCard)}
+                  </div>
+                )
+              })}
 
               <NewTask onSubmit={(title) => onAddTask(col.addStatus, title)} />
             </section>

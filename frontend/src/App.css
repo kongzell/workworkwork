@@ -53,17 +53,6 @@
 .empty-form { display: flex; gap: 8px; }
 .empty-form .field-input { width: 220px; }
 
-.view-placeholder {
-  flex: 1;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: var(--text-faint);
-  font-size: 14px;
-}
-
-.view-placeholder strong { color: var(--text-strong); }
-
 @media (max-width: 900px) {
   .sidebar { display: none; }
 }

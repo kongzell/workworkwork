@@ -2,8 +2,9 @@ import { useEffect, useState } from "react"
 import type { Commit, SystemHealth, WebhookEvent } from "../api"
 import { getCommits, getSystemHealth, getWebhookEvents } from "../api"
 import type { Member, Project, Task } from "../types"
+import { openTasksOf, STATUSES, taskPoints } from "../types"
 import { Avatar } from "./Avatar"
-import { IconCheck, IconChevronRight, IconPlus, IconSparkle } from "./Icons"
+import { IconChevronRight, IconPlus } from "./Icons"
 import "./RightSidebar.css"
 
 type Props = {
@@ -11,13 +12,27 @@ type Props = {
   members: Member[]
   onOpenTaskRef: (ref: string) => void
   onAddMember: () => void
+  onOpenMember: (id: string) => void
 }
 
-export function RightSidebar({ project, members, onOpenTaskRef, onAddMember }: Props) {
+export function RightSidebar({
+  project,
+  members,
+  onOpenTaskRef,
+  onAddMember,
+  onOpenMember,
+}: Props) {
   return (
     <aside className="rs">
       {project && <ProjectStats project={project} />}
-      {project && <TeamPanel members={members} onAddMember={onAddMember} />}
+      {project && (
+        <TeamPanel
+          members={members}
+          tasks={project.tasks}
+          onAddMember={onAddMember}
+          onOpenMember={onOpenMember}
+        />
+      )}
       <GithubActivity onOpenTaskRef={onOpenTaskRef} />
       <HealthBar />
     </aside>
@@ -49,7 +64,7 @@ function ProjectStats({ project }: { project: Project }) {
 
       <dl className="rs-stats">
         <div><dt>งานทั้งหมด</dt><dd>{total}</dd></div>
-        <div><dt>การ์ดบนบอร์ด</dt><dd>{cards.length}</dd></div>
+        <div><dt>งานหลัก</dt><dd>{cards.length}</dd></div>
         <div><dt>รอเริ่ม</dt><dd className="c-todo">{todo}</dd></div>
         <div><dt>กำลังทำ</dt><dd className="c-prog">{doing}</dd></div>
         <div><dt>รอตรวจ</dt><dd className="c-review">{review}</dd></div>
@@ -62,7 +77,31 @@ function ProjectStats({ project }: { project: Project }) {
 
 /* ---------- ทีมในโปรเจค ---------- */
 
-function TeamPanel({ members, onAddMember }: { members: Member[]; onAddMember: () => void }) {
+function TeamPanel({
+  members,
+  tasks,
+  onAddMember,
+  onOpenMember,
+}: {
+  members: Member[]
+  tasks: Task[]
+  onAddMember: () => void
+  onOpenMember: (id: string) => void
+}) {
+  const load = members.map((m) => {
+    const open = openTasksOf(tasks, m.id)
+    return {
+      member: m,
+      count: open.length,
+      points: open.reduce((sum, t) => sum + taskPoints(t), 0),
+    }
+  })
+
+  const total = load.reduce((sum, l) => sum + l.points, 0)
+  const heaviest = Math.max(1, ...load.map((l) => l.points))
+  //: ถ้าแบ่งงานเท่ากันทุกคนควรได้คนละเท่านี้
+  const fairShare = members.length > 0 ? total / members.length : 0
+
   return (
     <section className="rs-panel">
       <header className="rs-head">
@@ -72,20 +111,114 @@ function TeamPanel({ members, onAddMember }: { members: Member[]; onAddMember: (
 
       {members.length === 0 && <p className="rs-empty">ยังไม่มีใครในโปรเจคนี้</p>}
 
+      {total > 0 && (
+        <p className="rs-fair">แบ่งเท่ากันควรได้คนละ {fairShare.toFixed(1)} แต้ม</p>
+      )}
+
       <ul className="rs-team">
-        {members.map((m) => (
-          <li key={m.id}>
-            <Avatar member={m} size={22} />
-            <span className="rs-team-name">{m.name}</span>
-            <span className="rs-team-role">{m.role}</span>
-          </li>
-        ))}
+        {load.map(({ member, count, points }) => {
+          // เกินส่วนแบ่งที่ควรได้มาก = งานหนักเกินคนอื่น
+          const over = fairShare > 0 && points > fairShare * 1.4
+          const under = fairShare > 0 && points < fairShare * 0.6
+          return (
+            <li key={member.id}>
+              <button type="button" className="rs-team-row" onClick={() => onOpenMember(member.id)}>
+                <div className="rs-team-top">
+                  <Avatar member={member} size={22} />
+                  <span className="rs-team-name">{member.name}</span>
+                  <span className="rs-team-role">{member.role}</span>
+                </div>
+                <div className="rs-load">
+                  <span className="rs-load-bar">
+                    <span
+                      className={`rs-load-fill${over ? " is-over" : ""}${under ? " is-under" : ""}`}
+                      style={{ width: `${(points / heaviest) * 100}%` }}
+                    />
+                  </span>
+                  <span className="rs-load-num">
+                    {points} แต้ม · {count} งาน
+                  </span>
+                </div>
+              </button>
+            </li>
+          )
+        })}
       </ul>
 
       <button type="button" className="rs-add-member" onClick={onAddMember}>
         <IconPlus size={14} /> เพิ่มพนักงาน
       </button>
     </section>
+  )
+}
+
+/* ---------- งานของคนคนหนึ่ง (slide-out) ---------- */
+
+export function MemberDetailPanel({
+  member,
+  tasks,
+  onClose,
+  onOpenTask,
+}: {
+  member: Member
+  tasks: Task[]
+  onClose: () => void
+  onOpenTask: (id: string) => void
+}) {
+  const mine = tasks.filter((t) => t.assigneeIds.includes(member.id))
+  const open = mine.filter((t) => t.status !== "complete")
+  const points = open.reduce((sum, t) => sum + taskPoints(t), 0)
+  const hours = open.reduce((sum, t) => sum + (t.estimateHours ?? 0), 0)
+
+  return (
+    <aside className="rs-detail" role="dialog" aria-label={`งานของ ${member.name}`}>
+      <header className="rs-detail-head">
+        <button type="button" className="rs-detail-close" onClick={onClose} title="ปิด">
+          <IconChevronRight size={16} />
+        </button>
+        <span className="rs-title">งานที่รับผิดชอบ</span>
+      </header>
+
+      <div className="rs-detail-body">
+        <div className="rs-member-head">
+          <Avatar member={member} size={34} />
+          <div>
+            <div className="rs-detail-title">{member.name}</div>
+            <div className="rs-member-role">{member.role}</div>
+          </div>
+        </div>
+
+        <dl className="rs-fields">
+          <div><dt>ภาระงานที่ค้าง</dt><dd>{points} แต้ม</dd></div>
+          <div><dt>จำนวนงานที่ค้าง</dt><dd>{open.length} งาน</dd></div>
+          <div><dt>เวลาที่ประเมิน</dt><dd>{hours ? `${hours.toFixed(1)} ชม.` : "—"}</dd></div>
+        </dl>
+
+        {mine.length === 0 && <p className="rs-empty">ยังไม่ได้รับงานในโปรเจคนี้</p>}
+
+        {STATUSES.map((s) => {
+          const rows = mine.filter((t) => t.status === s.id)
+          if (rows.length === 0) return null
+          return (
+            <div className="rs-block" key={s.id}>
+              <span className="rs-block-title">
+                <span className="dot" style={{ background: s.color }} /> {s.label} · {rows.length}
+              </span>
+              <ul className="rs-mine">
+                {rows.map((t) => (
+                  <li key={t.id}>
+                    <button type="button" className="rs-mine-row" onClick={() => onOpenTask(t.id)}>
+                      <span className="rs-mine-title">{t.title}</span>
+                      <span className="rs-mine-pts">{taskPoints(t)}</span>
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )
+        })}
+      </div>
+    </aside>
   )
 }
 
@@ -255,84 +388,5 @@ function HealthBar() {
         ))}
       </ul>
     </section>
-  )
-}
-
-/* ---------- AI Task Details (slide-out) ---------- */
-
-export function TaskDetailPanel({
-  task,
-  subtasks,
-  onClose,
-  onToggleSubtaskDone,
-}: {
-  task: Task
-  subtasks: Task[]
-  onClose: () => void
-  onToggleSubtaskDone: (id: string) => void
-}) {
-  const doneCount = subtasks.filter((s) => s.status === "complete").length
-
-  return (
-    <aside className="rs-detail" role="dialog" aria-label={`รายละเอียดของ ${task.title}`}>
-      <header className="rs-detail-head">
-        <button type="button" className="rs-detail-close" onClick={onClose} title="ปิด">
-          <IconChevronRight size={16} />
-        </button>
-        <span className="rs-title">รายละเอียดงาน</span>
-      </header>
-
-      <div className="rs-detail-body">
-        <h3 className="rs-detail-title">{task.title}</h3>
-
-        <dl className="rs-fields">
-          <div><dt>หมวดหมู่</dt><dd>{task.category ?? "—"}</dd></div>
-          <div><dt>เวลาที่ประเมิน</dt><dd>{task.estimateHours ? `${task.estimateHours} ชม.` : "—"}</dd></div>
-          <div><dt>ความยาก</dt><dd>{task.complexity ?? "—"}</dd></div>
-        </dl>
-
-        <div className="rs-block">
-          <span className="rs-block-title">ทักษะที่ต้องใช้</span>
-          {task.tags.length === 0 ? (
-            <p className="rs-empty">ไม่มีข้อมูล</p>
-          ) : (
-            <div className="rs-tags">
-              {task.tags.map((t) => (
-                <span key={t} className="rs-tag">{t}</span>
-              ))}
-            </div>
-          )}
-        </div>
-
-        <div className="rs-block">
-          <span className="rs-block-title">
-            <IconSparkle size={12} /> งานย่อย
-            {subtasks.length > 0 && ` ${doneCount}/${subtasks.length}`}
-          </span>
-          {subtasks.length === 0 ? (
-            <p className="rs-empty">งานนี้ไม่มีงานย่อย</p>
-          ) : (
-            <ul className="rs-subtasks">
-              {subtasks.map((s) => (
-                <li key={s.id}>
-                  <button
-                    type="button"
-                    className={`rs-sub-check${s.status === "complete" ? " is-done" : ""}`}
-                    aria-pressed={s.status === "complete"}
-                    onClick={() => onToggleSubtaskDone(s.id)}
-                  >
-                    {s.status === "complete" && <IconCheck size={11} />}
-                  </button>
-                  <span className={`rs-sub-title${s.status === "complete" ? " is-done" : ""}`}>
-                    {s.title}
-                  </span>
-                  {s.category && <span className="rs-sub-cat">{s.category}</span>}
-                </li>
-              ))}
-            </ul>
-          )}
-        </div>
-      </div>
-    </aside>
   )
 }

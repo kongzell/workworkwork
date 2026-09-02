@@ -82,3 +82,6 @@ export const IconLayers = ({ size = 16, className }: P) =>
 
 export const IconGithub = ({ size = 16, className }: P) =>
   svg(<path d="M9 19c-4 1.2-4-2.2-5.5-2.6M15 21v-3.4c0-1 .1-1.4-.5-2 2.3-.3 4.5-1.2 4.5-5a3.9 3.9 0 0 0-1-2.7 3.6 3.6 0 0 0-.1-2.7s-.9-.3-2.9 1.1a10 10 0 0 0-5 0C7.5 2.9 6.6 3.2 6.6 3.2a3.6 3.6 0 0 0-.1 2.7A3.9 3.9 0 0 0 5.5 8.6c0 3.8 2.2 4.7 4.5 5-.6.6-.6 1.2-.5 2V21" />, size, className)
+
+export const IconHand = ({ size = 16, className }: P) =>
+  svg(<><path d="M8 11V5.5a1.5 1.5 0 0 1 3 0V11" /><path d="M11 10.5V4a1.5 1.5 0 0 1 3 0v6.5" /><path d="M14 10.5V6a1.5 1.5 0 0 1 3 0v7" /><path d="M8 11V9a1.5 1.5 0 0 0-3 0v5a7 7 0 0 0 7 7h1a6 6 0 0 0 6-6v-2" /></>, size, className)
