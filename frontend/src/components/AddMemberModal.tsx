@@ -198,14 +198,14 @@ function GithubImport({ repo, onImported }: { repo: string; onImported: () => vo
 
   return (
     <section className="modal-section">
-      <h3 className="modal-h3">ซิงค์สมาชิกจาก GitHub</h3>
+      <h3 className="modal-h3">Sync member from GitHub</h3>
 
       <button type="button" className="btn" disabled={busy} onClick={() => void sync()}>
-        {busy ? "กำลังดึง..." : `ดึง collaborator ของ ${repo}`}
+        {busy ? "Loading..." : `Add collaborator from ${repo}`}
       </button>
 
       {!message && !error && (
-        <p className="modal-hint">ใช้ตอนมีคนเข้า repo เพิ่มหลังจากสร้างโปรเจคไปแล้ว</p>
+        <p className="modal-hint">Use this when people join the repo after the project is created</p>
       )}
       {message && <p className="modal-hint">{message}</p>}
       {error && <p className="modal-error">{error}</p>}

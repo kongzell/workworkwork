@@ -19,6 +19,20 @@ export type BreakdownResult = {
   mock: boolean
 }
 
+/** error จาก API ที่พก HTTP status มาด้วย เพื่อให้ฝั่งเรียกแยกได้ว่า 401 หรือพังจริง */
+export class ApiError extends Error {
+  status: number
+
+  constructor(message: string, status: number) {
+    super(message)
+    this.name = "ApiError"
+    this.status = status
+  }
+}
+
+/** true เมื่อ error เกิดจากยังไม่ได้ล็อกอิน — ไม่ใช่ความผิดพลาดที่ต้องเตือน */
+export const isUnauthorized = (e: unknown) => e instanceof ApiError && e.status === 401
+
 async function readError(res: Response): Promise<string> {
   try {
     const body = await res.json()
@@ -40,7 +54,7 @@ export async function breakdownTask(
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(count === undefined ? { title, context } : { title, context, count }),
   })
-  if (!res.ok) throw new Error(await readError(res))
+  if (!res.ok) throw new ApiError(await readError(res), res.status)
   return res.json()
 }
 
@@ -64,6 +78,7 @@ type ApiTask = {
 type ApiProject = {
   id: string
   name: string
+  ownerId: string | null
   githubRepo: string | null
   memberIds: string[]
   tasks: ApiTask[]
@@ -86,6 +101,7 @@ const toTask = (t: ApiTask): Task => ({
 const toProject = (p: ApiProject): Project => ({
   id: p.id,
   name: p.name,
+  ownerId: p.ownerId,
   githubRepo: p.githubRepo,
   memberIds: p.memberIds,
   tasks: p.tasks.map(toTask),
@@ -93,7 +109,7 @@ const toProject = (p: ApiProject): Project => ({
 
 export async function getProjects(): Promise<Project[]> {
   const res = await fetch("/api/projects")
-  if (!res.ok) throw new Error(await readError(res))
+  if (!res.ok) throw new ApiError(await readError(res), res.status)
   return (await res.json()).map(toProject)
 }
 
@@ -103,7 +119,7 @@ export async function createProject(name: string, githubRepo: string | null): Pr
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ name, githubRepo }),
   })
-  if (!res.ok) throw new Error(await readError(res))
+  if (!res.ok) throw new ApiError(await readError(res), res.status)
   return toProject(await res.json())
 }
 
@@ -113,22 +129,22 @@ export async function updateProject(id: string, patch: { name?: string }): Promi
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(patch),
   })
-  if (!res.ok) throw new Error(await readError(res))
+  if (!res.ok) throw new ApiError(await readError(res), res.status)
 }
 
 export async function deleteProject(id: string): Promise<void> {
   const res = await fetch(`/api/projects/${id}`, { method: "DELETE" })
-  if (!res.ok) throw new Error(await readError(res))
+  if (!res.ok) throw new ApiError(await readError(res), res.status)
 }
 
 export async function addProjectMember(projectId: string, memberId: string): Promise<void> {
   const res = await fetch(`/api/projects/${projectId}/members/${memberId}`, { method: "POST" })
-  if (!res.ok) throw new Error(await readError(res))
+  if (!res.ok) throw new ApiError(await readError(res), res.status)
 }
 
 export async function removeProjectMember(projectId: string, memberId: string): Promise<void> {
   const res = await fetch(`/api/projects/${projectId}/members/${memberId}`, { method: "DELETE" })
-  if (!res.ok) throw new Error(await readError(res))
+  if (!res.ok) throw new ApiError(await readError(res), res.status)
 }
 
 export type NewTask = {
@@ -149,7 +165,7 @@ export async function createTask(projectId: string, task: NewTask): Promise<Task
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(task),
   })
-  if (!res.ok) throw new Error(await readError(res))
+  if (!res.ok) throw new ApiError(await readError(res), res.status)
   return toTask(await res.json())
 }
 
@@ -162,19 +178,19 @@ export async function updateTask(
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(patch),
   })
-  if (!res.ok) throw new Error(await readError(res))
+  if (!res.ok) throw new ApiError(await readError(res), res.status)
 }
 
 export async function deleteTask(id: string): Promise<void> {
   const res = await fetch(`/api/tasks/${id}`, { method: "DELETE" })
-  if (!res.ok) throw new Error(await readError(res))
+  if (!res.ok) throw new ApiError(await readError(res), res.status)
 }
 
 export async function setAssignee(taskId: string, memberId: string, on: boolean): Promise<void> {
   const res = await fetch(`/api/tasks/${taskId}/assignees/${memberId}`, {
     method: on ? "PUT" : "DELETE",
   })
-  if (!res.ok) throw new Error(await readError(res))
+  if (!res.ok) throw new ApiError(await readError(res), res.status)
 }
 
 // ---------- auth ----------
@@ -198,13 +214,13 @@ export type AuthStatus = {
 
 export async function getAuthStatus(): Promise<AuthStatus> {
   const res = await fetch("/api/auth/status")
-  if (!res.ok) throw new Error(await readError(res))
+  if (!res.ok) throw new ApiError(await readError(res), res.status)
   return res.json()
 }
 
 export async function devLogin(): Promise<AuthMember> {
   const res = await fetch("/api/auth/dev-login", { method: "POST" })
-  if (!res.ok) throw new Error(await readError(res))
+  if (!res.ok) throw new ApiError(await readError(res), res.status)
   return res.json()
 }
 
@@ -214,7 +230,7 @@ export async function updateMyRole(role: string): Promise<AuthMember> {
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ role }),
   })
-  if (!res.ok) throw new Error(await readError(res))
+  if (!res.ok) throw new ApiError(await readError(res), res.status)
   return res.json()
 }
 
@@ -235,7 +251,7 @@ export type ApiMember = {
 
 export async function getMembers(): Promise<ApiMember[]> {
   const res = await fetch("/api/members")
-  if (!res.ok) throw new Error(await readError(res))
+  if (!res.ok) throw new ApiError(await readError(res), res.status)
   return res.json()
 }
 
@@ -249,7 +265,7 @@ export async function createMemberApi(
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ name, role, color }),
   })
-  if (!res.ok) throw new Error(await readError(res))
+  if (!res.ok) throw new ApiError(await readError(res), res.status)
   return res.json()
 }
 
@@ -268,7 +284,7 @@ export type GithubRepo = { fullName: string; private: boolean }
 
 export async function getMyRepos(): Promise<GithubRepo[]> {
   const res = await fetch("/api/github/repos")
-  if (!res.ok) throw new Error(await readError(res))
+  if (!res.ok) throw new ApiError(await readError(res), res.status)
   return res.json()
 }
 
@@ -276,7 +292,7 @@ export async function importRepoCollaborators(repo: string): Promise<ImportResul
   const res = await fetch(`/api/github/import-collaborators?repo=${encodeURIComponent(repo)}`, {
     method: "POST",
   })
-  if (!res.ok) throw new Error(await readError(res))
+  if (!res.ok) throw new ApiError(await readError(res), res.status)
   return res.json()
 }
 
@@ -296,7 +312,7 @@ export type SystemHealth = {
 
 export async function getSystemHealth(): Promise<SystemHealth> {
   const res = await fetch("/api/system/health")
-  if (!res.ok) throw new Error(await readError(res))
+  if (!res.ok) throw new ApiError(await readError(res), res.status)
   return res.json()
 }
 
@@ -323,12 +339,12 @@ export type WebhookEvent = {
 
 export async function getCommits(limit = 8): Promise<Commit[]> {
   const res = await fetch(`/api/github/commits?limit=${limit}`)
-  if (!res.ok) throw new Error(await readError(res))
+  if (!res.ok) throw new ApiError(await readError(res), res.status)
   return res.json()
 }
 
 export async function getWebhookEvents(limit = 10): Promise<WebhookEvent[]> {
   const res = await fetch(`/api/github/events?limit=${limit}`)
-  if (!res.ok) throw new Error(await readError(res))
+  if (!res.ok) throw new ApiError(await readError(res), res.status)
   return res.json()
 }

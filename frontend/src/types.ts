@@ -32,6 +32,8 @@ export type Task = {
 export type Project = {
   id: string
   name: string
+  /** id ของคนที่สร้างโปรเจค — ลบ/เปลี่ยนชื่อ/จัดการสมาชิกได้คนเดียว */
+  ownerId: string | null
   /** repo บน GitHub ที่โปรเจคนี้ผูกอยู่ เช่น "kongzell/Follow-up" */
   githubRepo: string | null
   tasks: Task[]

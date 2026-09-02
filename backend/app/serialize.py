@@ -24,6 +24,7 @@ def project_out(project: Project) -> ProjectOut:
         id=project.id,
         name=project.name,
         github_repo=project.github_repo,
+        owner_id=project.owner_id,
         member_ids=[m.id for m in project.members],
         tasks=[task_out(t) for t in sorted(project.tasks, key=lambda t: t.position)],
     )

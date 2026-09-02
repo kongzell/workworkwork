@@ -73,6 +73,11 @@ class Project(Base):
     name: Mapped[str] = mapped_column(String(160))
     #: repo บน GitHub ที่โปรเจคนี้ผูกอยู่ เช่น "kongzell/Follow-up"
     github_repo: Mapped[str | None] = mapped_column(String(200), nullable=True)
+    #: คนที่สร้างโปรเจค — ลบ/เปลี่ยนชื่อโปรเจคได้คนเดียว
+    #: null ได้เพื่อไม่ให้โปรเจคหายตามเจ้าของที่ถูกลบ (ON DELETE SET NULL)
+    owner_id: Mapped[str | None] = mapped_column(
+        String(36), ForeignKey("members.id", ondelete="SET NULL"), nullable=True
+    )
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now)
 
     members: Mapped[list[Member]] = relationship(secondary=project_members, lazy="selectin")

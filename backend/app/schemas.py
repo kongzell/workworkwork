@@ -99,6 +99,7 @@ class ProjectUpdate(ApiModel):
 
 
 class ProjectOut(ApiModel):
+    owner_id: str | None = None
     id: str
     name: str
     github_repo: str | None

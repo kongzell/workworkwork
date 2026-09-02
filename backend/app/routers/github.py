@@ -13,7 +13,7 @@ from fastapi import APIRouter, Depends, Header, HTTPException, Request
 from sqlalchemy import desc, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.auth import current_member, require_member
+from app.auth import require_member
 from app.config import get_settings
 from app.db import get_session
 from app.models import Member, WebhookEvent
@@ -169,7 +169,7 @@ async def import_collaborators(
 @router.get("/commits", response_model=list[CommitOut])
 async def commits(
     limit: int = 10,
-    member: Member | None = Depends(current_member),
+    member: Member = Depends(require_member),
 ) -> list[CommitOut]:
     """ดึง commit ล่าสุดจาก repo ที่ตั้งไว้ใน GITHUB_REPO"""
     settings = get_settings()
@@ -215,6 +215,7 @@ async def commits(
 @router.get("/events", response_model=list[WebhookEventOut])
 async def events(
     limit: int = 20,
+    _me: Member = Depends(require_member),
     session: AsyncSession = Depends(get_session),
 ) -> list[WebhookEvent]:
     rows = await session.scalars(

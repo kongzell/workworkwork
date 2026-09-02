@@ -1,5 +1,4 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
-import { INITIAL_MEMBERS, INITIAL_PROJECTS } from "./data"
 import type { Member, PriorityId, Project, StatusId } from "./types"
 import type { ThemeId } from "./themes"
 import { loadTheme, saveTheme } from "./themes"
@@ -19,12 +18,10 @@ import "./App.css"
 export type Filters = { assigneeId: string | null; priority: PriorityId | null }
 
 export default function App() {
-  const [projects, setProjects] = useState<Project[]>(INITIAL_PROJECTS)
+  const [projects, setProjects] = useState<Project[]>([])
   const [syncError, setSyncError] = useState<string | null>(null)
-  const [allMembers, setAllMembers] = useState<Member[]>(INITIAL_MEMBERS)
-  const [activeProjectId, setActiveProjectId] = useState<string | null>(
-    INITIAL_PROJECTS[0]?.id ?? null,
-  )
+  const [allMembers, setAllMembers] = useState<Member[]>([])
+  const [activeProjectId, setActiveProjectId] = useState<string | null>(null)
   const [memberModalOpen, setMemberModalOpen] = useState(false)
   const [projectModalOpen, setProjectModalOpen] = useState(false)
   const [query, setQuery] = useState("")
@@ -53,7 +50,9 @@ export default function App() {
       setSyncError(null)
       return rows
     } catch (e) {
-      setSyncError(e instanceof Error ? e.message : "ต่อ API ไม่ได้")
+      // ยังไม่ล็อกอินไม่ใช่ความผิดพลาด — หน้า NeedLogin บอกอยู่แล้ว
+      setProjects([])
+      setSyncError(api.isUnauthorized(e) ? null : e instanceof Error ? e.message : "ต่อ API ไม่ได้")
       return null
     }
   }, [])
@@ -68,7 +67,9 @@ export default function App() {
         await action()
         setSyncError(null)
       } catch (e) {
-        setSyncError(e instanceof Error ? e.message : "บันทึกไม่สำเร็จ")
+        setSyncError(
+          api.isUnauthorized(e) ? null : e instanceof Error ? e.message : "บันทึกไม่สำเร็จ",
+        )
       }
       await refreshProjects()
     },
@@ -79,9 +80,10 @@ export default function App() {
   const refreshMembers = useCallback(async () => {
     try {
       const rows = await getMembers()
-      if (rows.length > 0) setAllMembers(rows.map(({ id, name, role, color }) => ({ id, name, role, color })))
+      setAllMembers(rows.map(({ id, name, role, color }) => ({ id, name, role, color })))
     } catch {
-      // backend ยังไม่ขึ้น — ใช้ INITIAL_MEMBERS ต่อไป
+      // ยังไม่ได้ล็อกอินหรือ backend ยังไม่ขึ้น — ไม่มีรายชื่อให้แสดง
+      setAllMembers([])
     }
   }, [])
 
@@ -177,9 +179,6 @@ export default function App() {
     if (!me || !project || !task) return
 
     void sync(async () => {
-      if (!project.memberIds.includes(me.id)) {
-        await api.addProjectMember(project.id, me.id)
-      }
       await api.setAssignee(taskId, me.id, true)
       if (task.status === "todo") {
         await api.updateTask(taskId, { status: "in-progress" })
@@ -270,7 +269,7 @@ export default function App() {
           starred={project ? starredIds.includes(project.id) : false}
           collapsed={collapsed}
           theme={theme}
-          canDelete
+          canDelete={project?.ownerId === auth?.member?.id}
           groupBy={groupBy}
           auth={auth}
           onChangeGroupBy={setGroupBy}
@@ -295,7 +294,9 @@ export default function App() {
           }}
         />
 
-        {project === null ? (
+        {auth !== null && auth.member === null ? (
+          <NeedLogin configured={auth.configured} />
+        ) : project === null ? (
           <EmptyProjects onOpen={() => setProjectModalOpen(true)} />
         ) : (
           <Board
@@ -400,6 +401,24 @@ export default function App() {
 }
 
 /** หน้าจอตอนยังไม่มีโปรเจคสักใบ */
+function NeedLogin({ configured }: { configured: boolean }) {
+  return (
+    <div className="empty-projects">
+      <h2>เข้าสู่ระบบก่อนใช้งาน</h2>
+      <p>
+        {configured
+          ? "บอร์ดของแต่ละคนแยกกัน — เข้าสู่ระบบด้วย GitHub เพื่อดูโปรเจคที่คุณเป็นสมาชิก"
+          : "ยังไม่ได้ตั้งค่า GitHub OAuth — ดูวิธีตั้งค่าใน README.docker.md"}
+      </p>
+      {configured && (
+        <a className="btn btn-primary" href="/api/auth/github">
+          <IconGithub size={14} /> เข้าสู่ระบบด้วย GitHub
+        </a>
+      )}
+    </div>
+  )
+}
+
 function EmptyProjects({ onOpen }: { onOpen: () => void }) {
   return (
     <div className="empty-projects">
