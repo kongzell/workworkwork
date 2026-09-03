@@ -1,5 +1,8 @@
+import re
+
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy import delete, func, select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.auth import require_member
@@ -9,6 +12,21 @@ from app.schemas import ProjectCreate, ProjectOut, ProjectUpdate, TaskCreate, Ta
 from app.serialize import project_out, task_out
 
 router = APIRouter(prefix="/api/projects", tags=["projects"])
+
+
+def _prefix_from_repo(github_repo: str | None) -> str:
+    """รหัสย่อจากอักษรตัวแรกของแต่ละคำในชื่อ repo
+
+    kongzell/kongzell-s-test -> KST      kongzell/Follow-up -> FU
+
+    ชื่อ repo อย่าง "...3" ไม่มีตัวอักษรเลย พิมพ์ใน commit แล้วจับไม่ได้
+    เคสแบบนั้นตกมาใช้ TASK ซึ่งเจ้าของแก้เองได้ทีหลัง
+    """
+    if not github_repo:
+        return "TASK"
+    name = github_repo.split("/")[-1]
+    initials = "".join(w[0] for w in re.split(r"[^A-Za-z0-9]+", name) if w and w[0].isalpha())
+    return initials.upper()[:10] if initials else "TASK"
 
 
 async def _get_project(session: AsyncSession, project_id: str, me: Member) -> Project:
@@ -53,7 +71,12 @@ async def create_project(
     session: AsyncSession = Depends(get_session),
 ) -> ProjectOut:
     """คนสร้างเป็นเจ้าของ และถูกใส่เป็นสมาชิกไปด้วย ไม่งั้นจะมองไม่เห็นโปรเจคที่ตัวเองเพิ่งสร้าง"""
-    project = Project(name=payload.name, github_repo=payload.github_repo, owner_id=me.id)
+    project = Project(
+        name=payload.name,
+        github_repo=payload.github_repo,
+        owner_id=me.id,
+        task_prefix=_prefix_from_repo(payload.github_repo),
+    )
     project.members.append(me)
     session.add(project)
     await session.commit()
@@ -150,20 +173,35 @@ async def create_task(
             Task.project_id == project_id, Task.status == payload.status
         )
     )
-    task = Task(
-        project_id=project_id,
-        parent_id=payload.parent_id,
-        title=payload.title,
-        status=payload.status,
-        priority=payload.priority,
-        due_date=payload.due_date,
-        position=(last or 0.0) + 1000.0,
-        category=payload.category,
-        tags=payload.tags,
-        estimate_hours=payload.estimate_hours,
-        complexity=payload.complexity,
-    )
-    session.add(task)
-    await session.commit()
-    await session.refresh(task)
-    return task_out(task)
+    # เลขงานนับต่อจากใบล่าสุดของโปรเจคนี้
+    # สองคนกดสร้างพร้อมกันอาจได้เลขชนกัน unique constraint จะกันไว้ แล้วลองใหม่
+    for attempt in range(3):
+        highest = await session.scalar(
+            select(func.max(Task.number)).where(Task.project_id == project_id)
+        )
+        task = Task(
+            project_id=project_id,
+            number=(highest or 0) + 1,
+            parent_id=payload.parent_id,
+            title=payload.title,
+            status=payload.status,
+            priority=payload.priority,
+            due_date=payload.due_date,
+            position=(last or 0.0) + 1000.0,
+            category=payload.category,
+            tags=payload.tags,
+            estimate_hours=payload.estimate_hours,
+            complexity=payload.complexity,
+        )
+        session.add(task)
+        try:
+            await session.commit()
+        except IntegrityError:
+            await session.rollback()
+            if attempt == 2:
+                raise HTTPException(409, "สร้างงานไม่สำเร็จเพราะเลขงานชนกัน ลองใหม่อีกครั้ง") from None
+            continue
+        await session.refresh(task)
+        return task_out(task)
+
+    raise HTTPException(409, "สร้างงานไม่สำเร็จ")

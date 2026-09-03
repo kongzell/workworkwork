@@ -9,7 +9,19 @@ from __future__ import annotations
 import uuid
 from datetime import UTC, date, datetime
 
-from sqlalchemy import JSON, Column, Date, DateTime, Float, ForeignKey, String, Table, Text
+from sqlalchemy import (
+    JSON,
+    Column,
+    Date,
+    DateTime,
+    Float,
+    ForeignKey,
+    Integer,
+    String,
+    Table,
+    Text,
+    UniqueConstraint,
+)
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 
 
@@ -73,6 +85,9 @@ class Project(Base):
     name: Mapped[str] = mapped_column(String(160))
     #: repo บน GitHub ที่โปรเจคนี้ผูกอยู่ เช่น "kongzell/Follow-up"
     github_repo: Mapped[str | None] = mapped_column(String(200), nullable=True)
+    #: รหัสย่อที่ใช้นำหน้าเลขงาน เช่น "KST" -> KST-001
+    #: ตั้งจากชื่อ repo ตอนสร้าง แล้วเจ้าของแก้เองได้
+    task_prefix: Mapped[str] = mapped_column(String(10), default="TASK")
     #: คนที่สร้างโปรเจค — ลบ/เปลี่ยนชื่อโปรเจคได้คนเดียว
     #: null ได้เพื่อไม่ให้โปรเจคหายตามเจ้าของที่ถูกลบ (ON DELETE SET NULL)
     owner_id: Mapped[str | None] = mapped_column(
@@ -91,9 +106,13 @@ class Project(Base):
 
 class Task(Base):
     __tablename__ = "tasks"
+    #: เลขงานห้ามซ้ำในโปรเจคเดียวกัน ไม่งั้น commit อ้างถึงแล้วไม่รู้ว่าใบไหน
+    __table_args__ = (UniqueConstraint("project_id", "number", name="uq_tasks_project_number"),)
 
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=_uuid)
     project_id: Mapped[str] = mapped_column(ForeignKey("projects.id", ondelete="CASCADE"))
+    #: เลขงานในโปรเจค เริ่มที่ 1 — ประกอบกับ task_prefix เป็นรหัสอย่าง KST-001
+    number: Mapped[int] = mapped_column(Integer)
     #: งานแม่ — งานที่ AI แตกให้จะชี้กลับมาที่หัวข้อกว้าง ๆ ที่ผู้ใช้พิมพ์
     parent_id: Mapped[str | None] = mapped_column(
         ForeignKey("tasks.id", ondelete="CASCADE"), nullable=True

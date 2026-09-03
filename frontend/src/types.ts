@@ -14,6 +14,8 @@ export type Member = {
 
 export type Task = {
   id: string
+  /** เลขงานในโปรเจค ใช้คู่กับ taskPrefix เป็นรหัสอย่าง KST-001 */
+  number: number
   /** งานย่อยที่ AI แตกให้จะชี้กลับมาที่งานแม่ — งานแม่เท่านั้นที่ขึ้นบนบอร์ด */
   parentId: string | null
   title: string
@@ -34,11 +36,17 @@ export type Project = {
   name: string
   /** id ของคนที่สร้างโปรเจค — ลบ/เปลี่ยนชื่อ/จัดการสมาชิกได้คนเดียว */
   ownerId: string | null
+  /** รหัสย่อที่ใช้นำหน้าเลขงาน เช่น "KST" */
+  taskPrefix: string
   /** repo บน GitHub ที่โปรเจคนี้ผูกอยู่ เช่น "kongzell/Follow-up" */
   githubRepo: string | null
   tasks: Task[]
   memberIds: string[]
 }
+
+/** รหัสงานที่เอาไปพิมพ์ใน commit ได้ เช่น KST-001 */
+export const taskKey = (prefix: string, number: number) =>
+  `${prefix}-${String(number).padStart(3, "0")}`
 
 export const STATUSES: { id: StatusId; label: string; color: string }[] = [
   { id: "todo", label: "รอเริ่ม", color: "var(--status-todo)" },

@@ -5,6 +5,7 @@ from app.schemas import ProjectOut, TaskOut
 def task_out(task: Task) -> TaskOut:
     return TaskOut(
         id=task.id,
+        number=task.number,
         parent_id=task.parent_id,
         title=task.title,
         status=task.status,
@@ -25,6 +26,7 @@ def project_out(project: Project) -> ProjectOut:
         name=project.name,
         github_repo=project.github_repo,
         owner_id=project.owner_id,
+        task_prefix=project.task_prefix,
         member_ids=[m.id for m in project.members],
         tasks=[task_out(t) for t in sorted(project.tasks, key=lambda t: t.position)],
     )

@@ -1,5 +1,7 @@
 import type { Member, PriorityId, StatusId, Task } from "../types"
-import { CATEGORIES, categoryColor, COMPLEXITIES, PRIORITIES, STATUSES, taskPoints } from "../types"
+import {
+  CATEGORIES, categoryColor, COMPLEXITIES, PRIORITIES, STATUSES, taskKey, taskPoints,
+} from "../types"
 import { Avatar } from "./Avatar"
 import { Menu, MenuItem, MenuLabel } from "./Menu"
 import {
@@ -12,6 +14,8 @@ type Props = {
   members: Member[]
   /** งานย่อยของการ์ดใบนี้ (ถ้ามี) */
   subtasks: Task[]
+  /** รหัสย่อของโปรเจค ใช้ประกอบเป็นรหัสงาน */
+  taskPrefix: string
   /** กางรายละเอียดอยู่หรือไม่ */
   expanded: boolean
   /** ล็อกอินอยู่และยังไม่มีใครรับงานนี้ */
@@ -33,7 +37,7 @@ const fmtDue = (iso: string) =>
   new Date(iso + "T00:00:00").toLocaleDateString("th-TH", { day: "numeric", month: "short" })
 
 export function TaskCard({
-  task, members, subtasks, expanded, canClaim, onClaim, onOpen,
+  task, members, subtasks, taskPrefix, expanded, canClaim, onClaim, onOpen,
   onToggleSubtaskAssignee, onSetSubtaskStatus, onChangeStatus, onToggleAssignee,
   onSetPriority, onSetDue, onSetCategory, onDelete, onAddMember,
 }: Props) {
@@ -64,6 +68,9 @@ export function TaskCard({
           aria-expanded={expanded}
           onClick={onOpen}
         >
+          <span className="card-key" title="พิมพ์รหัสนี้ในข้อความ commit เพื่อผูกกับการ์ดใบนี้">
+            {taskKey(taskPrefix, task.number)}
+          </span>
           <h3 className="card-title">{task.title}</h3>
         </button>
         <div className="card-more">

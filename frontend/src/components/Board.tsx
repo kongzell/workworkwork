@@ -115,6 +115,7 @@ export function Board({
               task={t}
               members={members}
               subtasks={project.tasks.filter((s) => s.parentId === t.id)}
+              taskPrefix={project.taskPrefix}
               expanded={t.id === selectedTaskId}
               canClaim={currentMemberId !== null && t.assigneeIds.length === 0}
               onClaim={() => onClaimTask(t.id)}

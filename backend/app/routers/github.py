@@ -16,7 +16,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.auth import require_member
 from app.config import get_settings
 from app.db import get_session
-from app.models import Member, WebhookEvent
+from app.models import Member, Project, Task, WebhookEvent
 from app.schemas import (
     CommitOut,
     GithubRepo,
@@ -27,8 +27,54 @@ from app.schemas import (
 
 router = APIRouter(prefix="/api/github", tags=["github"])
 
-#: รูปแบบรหัสงานที่อ่านจากข้อความ commit เช่น "แก้ UI หน้าล็อกอิน #TASK-001"
-TASK_REF = re.compile(r"#?(TASK-\d+)", re.IGNORECASE)
+#: รหัสงานในข้อความ commit เช่น "แก้ UI หน้าล็อกอิน KST-001"
+#: ส่วนหน้าคือ task_prefix ของโปรเจค ส่วนหลังคือเลขงาน ใส่ # นำหน้าหรือไม่ก็ได้
+TASK_REF = re.compile(r"#?\b([A-Za-z][A-Za-z0-9]{0,9})-0*(\d+)\b")
+
+
+def _read_ref(text: str) -> str | None:
+    """ดึงรหัสงานจากข้อความ คืนรูปแบบมาตรฐานตัวใหญ่ เช่น "KST-1" -> "KST-001\""""
+    match = TASK_REF.search(text)
+    if match is None:
+        return None
+    return f"{match.group(1).upper()}-{int(match.group(2)):03d}"
+
+
+async def _advance_referenced_tasks(
+    session: AsyncSession, repo: str | None, refs: list[str]
+) -> int:
+    """ย้ายการ์ดที่ commit อ้างถึงไปคอลัมน์ "รอตรวจ"
+
+    หาเฉพาะโปรเจคที่ผูกกับ repo ที่ยิงเข้ามา ทำให้รหัสย่อซ้ำกันข้าม repo ไม่กวนกัน
+    งานที่ปิดไปแล้วไม่ถูกดึงกลับ เพราะ commit ตามหลังการปิดงานเป็นเรื่องปกติ
+    """
+    if not repo or not refs:
+        return 0
+
+    projects = list(
+        await session.scalars(select(Project).where(Project.github_repo == repo))
+    )
+    if not projects:
+        return 0
+
+    moved = 0
+    for ref in set(refs):
+        prefix, _, number = ref.rpartition("-")
+        for project in projects:
+            if project.task_prefix.upper() != prefix:
+                continue
+            task = await session.scalar(
+                select(Task).where(
+                    Task.project_id == project.id, Task.number == int(number)
+                )
+            )
+            if task is not None and task.status != "complete":
+                task.status = "review"
+                moved += 1
+
+    if moved:
+        await session.commit()
+    return moved
 
 
 # สีสุ่มให้คนที่ดึงเข้ามาใหม่ ให้ avatar แยกกันออกตอนยังไม่มีรูป
@@ -197,7 +243,6 @@ async def commits(
     out: list[CommitOut] = []
     for row in res.json():
         message = (row.get("commit", {}).get("message") or "").split("\n")[0]
-        match = TASK_REF.search(message)
         out.append(
             CommitOut(
                 sha=row["sha"][:7],
@@ -206,7 +251,7 @@ async def commits(
                 or row.get("commit", {}).get("author", {}).get("name", "unknown"),
                 date=row.get("commit", {}).get("author", {}).get("date", ""),
                 url=row.get("html_url", ""),
-                task_ref=match.group(1).upper() if match else None,
+                task_ref=_read_ref(message),
             )
         )
     return out
@@ -243,13 +288,18 @@ async def webhook(
             raise HTTPException(401, "ลายเซ็นไม่ถูกต้อง")
 
     payload = await request.json()
+    rows = _summarize(x_github_event, payload)
     saved = [
         WebhookEvent(event=x_github_event, summary=summary, actor=actor, url=url, task_ref=ref)
-        for summary, actor, url, ref in _summarize(x_github_event, payload)
+        for summary, actor, url, ref in rows
     ]
     session.add_all(saved)
     await session.commit()
-    return {"saved": len(saved)}
+
+    repo = (payload.get("repository") or {}).get("full_name")
+    refs = [ref for *_, ref in rows if ref]
+    moved = await _advance_referenced_tasks(session, repo, refs)
+    return {"saved": len(saved), "moved": moved}
 
 
 def _summarize(event: str, payload: dict) -> list[tuple[str, str | None, str | None, str | None]]:
@@ -258,14 +308,13 @@ def _summarize(event: str, payload: dict) -> list[tuple[str, str | None, str | N
         rows = []
         for commit in payload.get("commits", []):
             message = (commit.get("message") or "").split("\n")[0]
-            match = TASK_REF.search(message)
             rows.append(
                 (
                     message,
                     (commit.get("author") or {}).get("username")
                     or (commit.get("author") or {}).get("name"),
                     commit.get("url"),
-                    match.group(1).upper() if match else None,
+                    _read_ref(message),
                 )
             )
         return rows
@@ -274,13 +323,12 @@ def _summarize(event: str, payload: dict) -> list[tuple[str, str | None, str | N
         pr = payload.get("pull_request", {})
         action = payload.get("action", "")
         title = pr.get("title", "")
-        match = TASK_REF.search(title)
         return [
             (
                 f"PR {action}: {title}",
                 (pr.get("user") or {}).get("login"),
                 pr.get("html_url"),
-                match.group(1).upper() if match else None,
+                _read_ref(title),
             )
         ]
 

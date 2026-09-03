@@ -73,6 +73,8 @@ class TaskUpdate(ApiModel):
 
 class TaskOut(ApiModel):
     id: str
+    #: เลขงานในโปรเจค ใช้คู่กับ taskPrefix ของโปรเจคเป็นรหัสอย่าง KST-001
+    number: int
     parent_id: str | None
     title: str
     status: StatusId
@@ -96,10 +98,13 @@ class ProjectCreate(ApiModel):
 class ProjectUpdate(ApiModel):
     name: str | None = Field(default=None, min_length=1, max_length=160)
     github_repo: str | None = Field(default=None, max_length=200)
+    #: ตัวอักษรกับตัวเลข ขึ้นต้นด้วยตัวอักษร — ต้องพิมพ์ใน commit ได้ง่าย
+    task_prefix: str | None = Field(default=None, pattern=r"^[A-Za-z][A-Za-z0-9]{0,9}$")
 
 
 class ProjectOut(ApiModel):
     owner_id: str | None = None
+    task_prefix: str = "TASK"
     id: str
     name: str
     github_repo: str | None
