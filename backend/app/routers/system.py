@@ -32,4 +32,5 @@ async def health(session: AsyncSession = Depends(get_session)) -> SystemHealth:
         auth_ready=settings.auth_ready,
         github_repo=settings.github_repo or None,
         webhook_ready=bool(settings.github_webhook_secret),
+        secrets_ready=settings.secrets_ready,
     )

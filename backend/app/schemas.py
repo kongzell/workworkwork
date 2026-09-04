@@ -201,3 +201,5 @@ class SystemHealth(ApiModel):
     auth_ready: bool
     github_repo: str | None
     webhook_ready: bool
+    #: false เมื่อ SESSION_SECRET ยังเป็นค่า default ของ dev — ห้าม deploy ทั้งแบบนี้
+    secrets_ready: bool

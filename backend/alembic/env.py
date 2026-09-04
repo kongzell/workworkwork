@@ -6,7 +6,7 @@ from sqlalchemy.engine import Connection
 from sqlalchemy.ext.asyncio import async_engine_from_config
 
 from alembic import context
-from app.config import get_settings
+from app.db import build_connect_args
 from app.models import Base
 
 # this is the Alembic Config object, which provides
@@ -14,7 +14,9 @@ from app.models import Base
 config = context.config
 
 # อ่าน DATABASE_URL จาก settings ที่เดียวกับตัวแอป — ไม่ต้องตั้งซ้ำใน alembic.ini
-config.set_main_option("sqlalchemy.url", get_settings().database_dsn)
+# ใช้ตัวแปลง DSN ตัวเดียวกับแอป ไม่งั้น migration จะต่อ Neon ไม่ติด (asyncpg ไม่รู้จัก sslmode)
+_dsn, _connect_args = build_connect_args()
+config.set_main_option("sqlalchemy.url", _dsn)
 
 # Interpret the config file for Python logging.
 # This line sets up loggers basically.
@@ -70,6 +72,7 @@ async def run_async_migrations() -> None:
         config.get_section(config.config_ini_section, {}),
         prefix="sqlalchemy.",
         poolclass=pool.NullPool,
+        connect_args=_connect_args,
     )
 
     async with connectable.connect() as connection:

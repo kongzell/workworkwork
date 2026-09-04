@@ -239,6 +239,100 @@ curl -X POST http://localhost:8081/api/github/webhook \
 
 ตอบกลับเป็น `{"saved": 1, "moved": 1}` — `moved` คือจำนวนการ์ดที่ถูกย้าย
 
+## Deploy ขึ้นจริง (Render + Neon)
+
+ตอน deploy รวม frontend กับ API ไว้ที่ **service เดียว** ไม่แยกกัน
+
+เหตุผล: session cookie ตั้งเป็น `SameSite=Lax` ถ้าอยู่คนละโดเมนเบราว์เซอร์จะไม่ส่ง
+cookie ข้ามไป ล็อกอินจะไม่ติด การอยู่โดเมนเดียวยังทำให้ไม่ต้องตั้ง CORS และมี
+callback URL กับ webhook URL ที่เดียว
+
+```
+Render Web Service            Neon (Postgres)
+  Dockerfile (root)      ←──── DATABASE_URL
+   ├── FastAPI  /api/*
+   └── static   /
+```
+
+### 1. สร้างฐานข้อมูลที่ Neon
+
+สมัครที่ neon.tech แล้วคัดลอก connection string แบบ **pooled** มา
+
+```
+postgresql://user:pass@ep-xxx-pooler.region.aws.neon.tech/neondb?sslmode=require
+```
+
+วางมาทั้งเส้นได้เลย — `asyncpg` ไม่รู้จัก `?sslmode=` แต่ [app/db.py](backend/app/db.py)
+`build_connect_args()` ถอดออกให้เองแล้วแปลงเป็น SSL context ที่ถูกต้อง
+และถ้าเจอ host ที่มี `-pooler` จะปิด prepared statement cache ให้อัตโนมัติ
+(pgbouncer โหมด transaction ใช้ prepared statement ข้าม request ไม่ได้)
+
+### 2. สร้าง Web Service ที่ Render
+
+ใช้ [render.yaml](render.yaml) เป็น Blueprint หรือสร้างเองก็ได้ โดยตั้ง
+
+| ค่า | ใส่อะไร |
+| --- | --- |
+| Runtime | Docker |
+| Dockerfile Path | `./Dockerfile` (ของ root ไม่ใช่ใน backend/) |
+| Health Check Path | `/api/health` |
+
+### 3. ตัวแปรที่ต้องตั้ง
+
+| ตัวแปร | หมายเหตุ |
+| --- | --- |
+| `DATABASE_URL` | connection string จาก Neon |
+| `SESSION_SECRET` | **ต้องสุ่ม** — `render.yaml` ใช้ `generateValue: true` ให้แล้ว |
+| `TOKEN_SECRET` | ใช้เข้ารหัส `github_token` สุ่มเหมือนกัน |
+| `GITHUB_CLIENT_ID` / `GITHUB_CLIENT_SECRET` | จาก OAuth App |
+| `GITHUB_CALLBACK_URL` | `https://<โดเมน>/api/auth/github/callback` |
+| `GITHUB_WEBHOOK_SECRET` | สุ่มเอง แล้วเอาไปใส่ตอนสร้าง webhook |
+| `GEMINI_API_KEY` | จาก aistudio.google.com |
+| `CORS_ORIGIN` | `https://<โดเมน>` |
+| `AI_MOCK` / `AUTH_MOCK` | ต้องเป็น `false` |
+
+> ⚠️ ต้องแก้ **Authorization callback URL** ใน OAuth App บน GitHub ให้ตรงกับ
+> `GITHUB_CALLBACK_URL` เป๊ะ ๆ ไม่งั้นล็อกอินไม่ผ่าน
+
+### 4. ตั้ง webhook
+
+```
+repo > Settings > Webhooks > Add webhook
+  Payload URL:  https://<โดเมน>/api/github/webhook
+  Content type: application/json
+  Secret:       ค่าเดียวกับ GITHUB_WEBHOOK_SECRET
+  Events:       Pushes, Pull requests
+```
+
+### ทดสอบ image รวมในเครื่องก่อน deploy
+
+```bash
+docker build -t follow-up-allinone .
+docker compose up -d db
+docker run --rm --name allinone-test --network follow-up_default -p 3100:3000 \
+  -e DATABASE_URL="postgresql://followup:followup@db:5432/followup" \
+  -e SESSION_SECRET="local-test" -e TOKEN_SECRET="local-test" \
+  follow-up-allinone
+```
+
+เปิด http://localhost:3100 ต้องได้ทั้งหน้าเว็บและ `/api/*` จากพอร์ตเดียว
+
+### การเข้ารหัส token
+
+`members.github_token` เก็บเป็นค่าที่เข้ารหัสด้วย Fernet แล้ว (ขึ้นต้นด้วย `enc:`)
+อ่าน/เขียนผ่าน property `Member.token` เท่านั้น ซึ่งเข้ารหัส/ถอดรหัสให้อัตโนมัติ
+
+แถวเก่าที่เคยเก็บเป็น plaintext ยังอ่านได้ปกติ และจะถูกเขียนทับเป็นแบบเข้ารหัส
+เองตอนเจ้าของบัญชีล็อกอินรอบถัดไป
+
+> เปลี่ยน `TOKEN_SECRET` หลัง deploy = token เดิมถอดไม่ออก ผู้ใช้ต้องล็อกอินใหม่
+> (ระบบจะไม่ error แต่จะถือว่าไม่มี token)
+
+### ตรวจก่อน deploy
+
+แถบ **System Health** ฝั่งขวามีบรรทัด `Secrets` — ถ้าขึ้นแดงว่า
+*"ยังใช้ค่า dev — ห้าม deploy"* แปลว่า `SESSION_SECRET` ยังเป็นค่าเริ่มต้น
+
 ## สิทธิ์การเข้าถึง
 
 ทุกคนมีบอร์ดของตัวเอง — ข้อมูลของแต่ละคนแยกกัน

@@ -1,7 +1,10 @@
 from datetime import UTC, datetime
+from pathlib import Path
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse
+from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
 from app.config import get_settings
@@ -43,3 +46,35 @@ class Health(BaseModel):
 @app.get("/api/health")
 def health() -> Health:
     return Health(ok=True, service="follow-up api", time=datetime.now(UTC))
+
+
+# ---------- หน้าเว็บ ----------
+#
+# ตอน deploy รวม frontend กับ API ไว้ที่ service เดียว เพราะ session cookie เป็น
+# SameSite=Lax ถ้าแยกคนละโดเมนเบราว์เซอร์จะไม่ส่ง cookie ข้ามไป = ล็อกอินไม่ติด
+# อยู่โดเมนเดียวกันยังทำให้ไม่ต้องตั้ง CORS และมี callback/webhook URL ที่เดียว
+#
+# ตอนรันในเครื่องด้วย docker compose โฟลเดอร์นี้จะไม่มี — nginx เป็นคนเสิร์ฟแทน
+STATIC_DIR = Path(__file__).resolve().parent.parent / "static"
+
+
+class SpaFiles(StaticFiles):
+    """เสิร์ฟไฟล์ที่ build แล้ว และคืน index.html ให้เส้นทางที่ไม่มีไฟล์จริง
+
+    บอร์ดเป็น SPA เส้นทางอย่าง /project/123 ไม่มีไฟล์อยู่จริง ถ้าไม่ fallback
+    ผู้ใช้ที่ refresh หน้ากลางทางจะเจอ 404
+    """
+
+    async def get_response(self, path: str, scope):  # noqa: ANN001, ANN201
+        try:
+            return await super().get_response(path, scope)
+        except Exception:
+            index = STATIC_DIR / "index.html"
+            if index.is_file():
+                return FileResponse(index)
+            raise
+
+
+if STATIC_DIR.is_dir():
+    # ต้อง mount ท้ายสุด ไม่งั้นจะกลืน /api/* ที่ประกาศไว้ข้างบน
+    app.mount("/", SpaFiles(directory=STATIC_DIR, html=True), name="web")

@@ -316,6 +316,8 @@ export type SystemHealth = {
   authReady: boolean
   githubRepo: string | null
   webhookReady: boolean
+  /** false = SESSION_SECRET ยังเป็นค่า default ของ dev */
+  secretsReady: boolean
 }
 
 export async function getSystemHealth(): Promise<SystemHealth> {

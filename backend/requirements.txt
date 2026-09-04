@@ -9,3 +9,5 @@ asyncpg>=0.29
 httpx>=0.27
 # เซ็น session cookie
 itsdangerous>=2.2
+# เข้ารหัส github_token ก่อนเก็บลงฐานข้อมูล
+cryptography>=43

@@ -24,6 +24,8 @@ from sqlalchemy import (
 )
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 
+from app import crypto
+
 
 def _uuid() -> str:
     return str(uuid.uuid4())
@@ -75,7 +77,17 @@ class Member(Base):
     #: access token ของ GitHub — เก็บไว้เรียก API ทีหลัง (เช่น ดึงรายชื่อสมาชิก org)
     #: หมายเหตุความปลอดภัย: เก็บเป็น plaintext ตอน dev
     #: ก่อนขึ้น production ควรเข้ารหัสก่อนบันทึก
+    #: เก็บเป็นค่าที่เข้ารหัสแล้ว — อ่าน/เขียนผ่าน property `token` เท่านั้น
     github_token: Mapped[str | None] = mapped_column(Text, nullable=True)
+
+    @property
+    def token(self) -> str | None:
+        """access token ของ GitHub แบบถอดรหัสแล้ว"""
+        return crypto.decrypt(self.github_token)
+
+    @token.setter
+    def token(self, value: str | None) -> None:
+        self.github_token = crypto.encrypt(value)
 
 
 class Project(Base):

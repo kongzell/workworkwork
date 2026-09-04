@@ -42,8 +42,16 @@ class Settings(BaseSettings):
     # --- session ---
     #: ใช้เซ็น cookie — ตอน deploy จริงต้องเปลี่ยนเป็นค่าสุ่มยาว ๆ
     session_secret: str = "dev-secret-change-me"
+    #: ใช้เข้ารหัส github_token ที่เก็บในฐานข้อมูล
+    #: ถ้าไม่ตั้งจะยืม session_secret มาใช้ — แยกกันดีกว่าเพราะเปลี่ยนคนละจังหวะ
+    token_secret: str = ""
     #: เปิดไว้เพื่อทดสอบ UI โดยไม่ต้องมี OAuth App (จะมี /api/auth/dev-login ให้ใช้)
     auth_mock: bool = False
+
+    @property
+    def secrets_ready(self) -> bool:
+        """true เมื่อไม่มี secret ตัวไหนยังเป็นค่า default ของ dev"""
+        return self.session_secret != "dev-secret-change-me"
 
     @property
     def github_ready(self) -> bool:

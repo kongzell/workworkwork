@@ -152,12 +152,13 @@ async def _github_get(token: str, url: str, params: dict | None = None) -> list 
 
 
 def _need_token(member: Member) -> str:
-    if not member.github_token:
+    token = member.token
+    if not token:
         raise HTTPException(
             400,
             "บัญชีนี้ไม่ได้เข้าสู่ระบบผ่าน GitHub — ออกจากระบบแล้วกด 'เข้าสู่ระบบด้วย GitHub' ก่อน",
         )
-    return member.github_token
+    return token
 
 
 async def _upsert_people(
@@ -207,12 +208,13 @@ async def auto_join_projects(session: AsyncSession, member: Member) -> list[str]
     เรียกทุกครั้งที่ล็อกอิน ไม่ใช่แค่ครั้งแรก จะได้รับ repo ที่เพิ่งถูกเชิญเข้าไปด้วย
     คืนชื่อโปรเจคที่เพิ่งเข้าไป (ว่างถ้าไม่มีอะไรเปลี่ยน)
     """
-    if not member.github_token:
+    token = member.token
+    if not token:
         return []
 
     try:
         rows = await _github_get(
-            member.github_token,
+            token,
             "https://api.github.com/user/repos",
             {"affiliation": "owner,collaborator,organization_member", "per_page": 100},
         )
@@ -316,8 +318,8 @@ async def commits(
     url = f"https://api.github.com/repos/{settings.github_repo}/commits"
     headers = {"Accept": "application/vnd.github+json"}
     # repo ส่วนตัวต้องมี token ถึงจะอ่านได้ — ใช้ของคนที่ล็อกอินอยู่
-    if member is not None and member.github_token:
-        headers["Authorization"] = f"Bearer {member.github_token}"
+    if member is not None and member.token:
+        headers["Authorization"] = f"Bearer {member.token}"
     try:
         async with httpx.AsyncClient(timeout=30) as client:
             res = await client.get(url, headers=headers, params={"per_page": min(limit, 30)})

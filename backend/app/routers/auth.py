@@ -178,7 +178,7 @@ async def _upsert_member(session: AsyncSession, profile: dict, token: str) -> Me
     member.github_login = profile["login"]
     member.avatar_url = profile.get("avatar_url")
     member.email = profile.get("email")
-    member.github_token = token
+    member.token = token
     await session.commit()
     await session.refresh(member)
     return member

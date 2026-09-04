@@ -379,6 +379,11 @@ function HealthBar() {
           { label: "AI", ok: health.aiReady, note: health.aiModel },
           { label: "Login", ok: health.authReady, note: undefined },
           { label: "Webhook", ok: health.webhookReady, note: health.githubRepo ?? "ยังไม่เชื่อม repo" },
+          {
+            label: "Secrets",
+            ok: health.secretsReady,
+            note: health.secretsReady ? "ตั้งค่าแล้ว" : "ยังใช้ค่า dev — ห้าม deploy",
+          },
         ]
 
   return (
