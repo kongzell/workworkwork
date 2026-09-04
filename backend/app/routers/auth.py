@@ -11,6 +11,7 @@ from app.auth import COOKIE_NAME, MAX_AGE, current_member, make_cookie, require_
 from app.config import get_settings
 from app.db import get_session
 from app.models import Member
+from app.routers.github import auto_join_projects
 from app.schemas import AuthStatus, MemberOut, MemberUpdate
 
 router = APIRouter(prefix="/api/auth", tags=["auth"])
@@ -96,6 +97,8 @@ async def github_callback(
         profile = user_res.json()
 
     member = await _upsert_member(session, profile, token)
+    # เข้าโปรเจคที่ผูกกับ repo ของตัวเองให้เลย จะได้ไม่เจอหน้าเปล่าตอนล็อกอินครั้งแรก
+    await auto_join_projects(session, member)
     response = RedirectResponse(url="/", status_code=303)
     _set_cookie(response, member.id, request)
     return response

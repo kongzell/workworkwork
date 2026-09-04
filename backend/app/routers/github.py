@@ -149,6 +149,44 @@ async def _upsert_people(
     return created, updated, touched
 
 
+async def auto_join_projects(session: AsyncSession, member: Member) -> list[str]:
+    """ใส่คนที่เพิ่งล็อกอินเข้าโปรเจคที่ผูกกับ repo ที่เขามีสิทธิ์ push
+
+    ไม่งั้นคนที่ถูกเชิญเข้า repo แล้วมาล็อกอินเองจะเจอหน้าเปล่า
+    ต้องรอเจ้าของโปรเจคกดดึง collaborator ให้ก่อนถึงจะเห็นอะไร
+
+    เรียกทุกครั้งที่ล็อกอิน ไม่ใช่แค่ครั้งแรก จะได้รับ repo ที่เพิ่งถูกเชิญเข้าไปด้วย
+    คืนชื่อโปรเจคที่เพิ่งเข้าไป (ว่างถ้าไม่มีอะไรเปลี่ยน)
+    """
+    if not member.github_token:
+        return []
+
+    try:
+        rows = await _github_get(
+            member.github_token,
+            "https://api.github.com/user/repos",
+            {"affiliation": "owner,collaborator,organization_member", "per_page": 100},
+        )
+    except HTTPException:
+        # GitHub ล่มหรือ token หมดสิทธิ์ ก็ต้องล็อกอินผ่านอยู่ดี แค่ไม่ได้ auto-join
+        return []
+
+    repos = {r["full_name"] for r in rows if (r.get("permissions") or {}).get("push")}
+    if not repos:
+        return []
+
+    joined: list[str] = []
+    projects = await session.scalars(select(Project).where(Project.github_repo.in_(repos)))
+    for project in projects:
+        if member.id not in {m.id for m in project.members}:
+            project.members.append(member)
+            joined.append(project.name)
+
+    if joined:
+        await session.commit()
+    return joined
+
+
 @router.get("/repos", response_model=list[GithubRepo])
 async def my_repos(member: Member = Depends(require_member)) -> list[dict]:
     """repo ที่คนล็อกอินมีสิทธิ์ push — อ่าน collaborator ได้เฉพาะ repo พวกนี้"""
