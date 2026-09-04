@@ -119,6 +119,7 @@ export function Board({
               members={members}
               subtasks={project.tasks.filter((s) => s.parentId === t.id)}
               taskPrefix={project.taskPrefix}
+              githubRepo={project.githubRepo}
               isOwner={isOwner}
               currentMemberId={currentMemberId}
               expanded={t.id === selectedTaskId}

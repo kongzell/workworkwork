@@ -1,11 +1,13 @@
 import type { Member, PriorityId, StatusId, Task } from "../types"
 import {
-  CATEGORIES, categoryColor, COMPLEXITIES, PRIORITIES, STATUSES, taskKey, taskPoints,
+  CATEGORIES, categoryColor, codeLink, COMPLEXITIES, PRIORITIES, STATUSES, taskKey,
+  taskPoints,
 } from "../types"
 import { Avatar } from "./Avatar"
 import { Menu, MenuItem, MenuLabel } from "./Menu"
 import {
-  IconCalendar, IconCheck, IconDots, IconFlag, IconHand, IconPlus, IconTrash, IconUser,
+  IconCalendar, IconCheck, IconDots, IconFlag, IconGithub, IconHand, IconPlus, IconTrash,
+  IconUser,
 } from "./Icons"
 
 type Props = {
@@ -16,6 +18,8 @@ type Props = {
   subtasks: Task[]
   /** รหัสย่อของโปรเจค ใช้ประกอบเป็นรหัสงาน */
   taskPrefix: string
+  /** repo ของโปรเจค ใช้ประกอบลิงก์ compare ตอนมีแค่ชื่อ branch */
+  githubRepo: string | null
   /** เจ้าของโปรเจค — วางแผนงานได้ (ความสำคัญ หมวดหมู่ กำหนดส่ง ลบ มอบหมายคนอื่น) */
   isOwner: boolean
   /** id ของคนที่ล็อกอินอยู่ ใช้ตัดสินว่ารับงานเองได้ไหม */
@@ -41,7 +45,7 @@ const fmtDue = (iso: string) =>
   new Date(iso + "T00:00:00").toLocaleDateString("th-TH", { day: "numeric", month: "short" })
 
 export function TaskCard({
-  task, members, subtasks, taskPrefix, isOwner, currentMemberId, expanded,
+  task, members, subtasks, taskPrefix, githubRepo, isOwner, currentMemberId, expanded,
   canClaim, onClaim, onOpen,
   onToggleSubtaskAssignee, onSetSubtaskStatus, onChangeStatus, onToggleAssignee,
   onSetPriority, onSetDue, onSetCategory, onDelete, onAddMember,
@@ -61,6 +65,8 @@ export function TaskCard({
 
   // เอาคนที่ถนัดตรงงานขึ้นก่อน จะได้เลือกง่าย
   const sortedMembers = [...members].sort((a, b) => Number(matches(b)) - Number(matches(a)))
+
+  const code = codeLink(task, githubRepo)
 
   //: สมาชิกส่งงานได้ถึงแค่ "รอตรวจ" — คนตรวจรับคือเจ้าของโปรเจค
   const movable = isOwner ? STATUSES : STATUSES.filter((s) => s.id !== "complete")
@@ -145,6 +151,19 @@ export function TaskCard({
             <span className="card-cx" style={{ color: complexity.color }}>{complexity.label}</span>
           )}
         </div>
+      )}
+
+      {code && (
+        <a
+          className="card-code"
+          href={code.url}
+          target="_blank"
+          rel="noreferrer"
+          title="เปิดดูโค้ดบน GitHub"
+        >
+          <IconGithub size={12} />
+          <span className="card-code-label">{code.label}</span>
+        </a>
       )}
 
       <div className="card-foot">

@@ -258,6 +258,29 @@
 .card:hover .card-more,
 .card-more:focus-within { opacity: 1; }
 
+.card-code {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  max-width: 100%;
+  padding: 3px 8px;
+  border: 1px solid var(--border-strong);
+  border-radius: 999px;
+  color: var(--text-dim);
+  font-size: 10.5px;
+  text-decoration: none;
+  align-self: flex-start;
+}
+
+.card-code:hover { border-color: var(--accent); color: var(--accent-text); }
+
+.card-code-label {
+  font-family: var(--mono);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .card-foot { display: flex; align-items: center; gap: 8px; min-height: 24px; }
 
 .card-meta {

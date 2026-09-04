@@ -63,6 +63,8 @@ export async function breakdownTask(
 type ApiTask = {
   id: string
   number: number
+  branch: string | null
+  reviewUrl: string | null
   parentId: string | null
   title: string
   status: StatusId
@@ -89,6 +91,8 @@ type ApiProject = {
 const toTask = (t: ApiTask): Task => ({
   id: t.id,
   number: t.number,
+  branch: t.branch,
+  reviewUrl: t.reviewUrl,
   parentId: t.parentId,
   title: t.title,
   status: t.status,

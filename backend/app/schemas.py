@@ -86,6 +86,10 @@ class TaskOut(ApiModel):
     tags: list[str]
     estimate_hours: float | None
     complexity: Complexity | None
+    #: branch ล่าสุดที่ commit ถึงงานนี้ (ไม่รวม branch หลัก)
+    branch: str | None = None
+    #: ลิงก์ PR ล่าสุดที่อ้างถึงงานนี้
+    review_url: str | None = None
 
 
 # ---------- projects ----------

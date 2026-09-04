@@ -127,6 +127,10 @@ class Task(Base):
     # --- ฟิลด์ที่ AI เติมให้ (ผู้ใช้แก้เองได้) ---
     #: Frontend / Backend / Database / ... — ใช้เป็นคอลัมน์ได้เมื่อจัดกลุ่มตามหมวดหมู่
     category: Mapped[str | None] = mapped_column(String(40), nullable=True)
+    #: branch ล่าสุดที่มี commit อ้างถึงงานนี้ ใช้ลิงก์ไปดู diff บน GitHub
+    branch: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    #: ลิงก์ PR ล่าสุดที่อ้างถึงงานนี้ — ดีกว่า branch เพราะเห็นรีวิวด้วย
+    review_url: Mapped[str | None] = mapped_column(Text, nullable=True)
     #: ทักษะ/เครื่องมือที่ต้องใช้ เก็บเป็น JSON array
     #: ปล่อยให้เป็น NULL ได้ เพราะ sqlite เพิ่มคอลัมน์ NOT NULL ที่ไม่มี default ไม่ได้
     tags: Mapped[list[str] | None] = mapped_column(JSON, nullable=True, default=list)

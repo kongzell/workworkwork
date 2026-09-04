@@ -28,6 +28,10 @@ export type Task = {
   category: string | null
   tags: string[]
   estimateHours: number | null
+  /** branch ล่าสุดที่ commit ถึงงานนี้ */
+  branch: string | null
+  /** ลิงก์ PR ล่าสุดที่อ้างถึงงานนี้ */
+  reviewUrl: string | null
   complexity: Complexity | null
 }
 
@@ -47,6 +51,25 @@ export type Project = {
 /** รหัสงานที่เอาไปพิมพ์ใน commit ได้ เช่น KST-001 */
 export const taskKey = (prefix: string, number: number) =>
   `${prefix}-${String(number).padStart(3, "0")}`
+
+/** ที่อยู่ของโค้ดสำหรับงานหนึ่งใบ — คืน null ถ้ายังไม่เคยมี commit อ้างถึง
+ *
+ * ชอบลิงก์ PR มากกว่า เพราะเห็นทั้ง diff และคอมเมนต์รีวิวในหน้าเดียว
+ * ถ้ามีแค่ branch ใช้หน้า compare เพราะบอกได้ว่าเปลี่ยนอะไรไปจาก branch หลัก
+ */
+export const codeLink = (
+  task: Pick<Task, "branch" | "reviewUrl">,
+  githubRepo: string | null,
+): { url: string; label: string } | null => {
+  if (task.reviewUrl) return { url: task.reviewUrl, label: "ดู Pull Request" }
+  if (task.branch && githubRepo) {
+    return {
+      url: `https://github.com/${githubRepo}/compare/${encodeURIComponent(task.branch)}`,
+      label: task.branch,
+    }
+  }
+  return null
+}
 
 export const STATUSES: { id: StatusId; label: string; color: string }[] = [
   { id: "todo", label: "รอเริ่ม", color: "var(--status-todo)" },

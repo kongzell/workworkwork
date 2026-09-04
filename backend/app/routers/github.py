@@ -41,7 +41,12 @@ def _read_ref(text: str) -> str | None:
 
 
 async def _advance_referenced_tasks(
-    session: AsyncSession, repo: str | None, refs: list[str], status: str
+    session: AsyncSession,
+    repo: str | None,
+    refs: list[str],
+    status: str,
+    branch: str | None = None,
+    review_url: str | None = None,
 ) -> int:
     """ย้ายการ์ดที่ commit หรือ PR อ้างถึงไปยังสถานะที่กำหนด
 
@@ -68,16 +73,44 @@ async def _advance_referenced_tasks(
                     Task.project_id == project.id, Task.number == int(number)
                 )
             )
-            if task is None or task.status == status:
+            if task is None or task.status == "complete":
                 continue
-            if task.status == "complete":
-                continue
-            task.status = status
+
+            # เก็บที่อยู่ของโค้ดไว้เสมอ แม้สถานะจะไม่ได้เปลี่ยน
+            # จะได้กดจากการ์ดไปดู diff ได้ตอนตรวจงาน
+            if branch:
+                task.branch = branch
+            if review_url:
+                task.review_url = review_url
+
+            if task.status != status:
+                task.status = status
             moved += 1
 
     if moved:
         await session.commit()
     return moved
+
+
+def _code_location(event: str, payload: dict) -> tuple[str | None, str | None]:
+    """ที่อยู่ของโค้ดที่แก้ — (ชื่อ branch, ลิงก์ PR)
+
+    push ให้ branch มาใน ref ส่วน PR ให้ทั้ง branch ต้นทางและลิงก์หน้า PR
+    branch หลักไม่เก็บ เพราะลิงก์เทียบ diff ของ main กับตัวเองจะว่างเปล่า
+    """
+    default = (payload.get("repository") or {}).get("default_branch")
+
+    if event == "push":
+        ref = payload.get("ref") or ""
+        branch = ref.removeprefix("refs/heads/") if ref.startswith("refs/heads/") else None
+        return (None if branch == default else branch), None
+
+    if event == "pull_request":
+        pr = payload.get("pull_request") or {}
+        branch = ((pr.get("head") or {}).get("ref")) or None
+        return (None if branch == default else branch), pr.get("html_url")
+
+    return None, None
 
 
 def _target_status(event: str, payload: dict) -> str:
@@ -353,7 +386,8 @@ async def webhook(
     repo = (payload.get("repository") or {}).get("full_name")
     refs = [ref for *_, ref in rows if ref]
     status = _target_status(x_github_event, payload)
-    moved = await _advance_referenced_tasks(session, repo, refs, status)
+    branch, review_url = _code_location(x_github_event, payload)
+    moved = await _advance_referenced_tasks(session, repo, refs, status, branch, review_url)
     return {"saved": len(saved), "moved": moved, "status": status}
 
 

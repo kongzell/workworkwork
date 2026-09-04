@@ -17,6 +17,8 @@ def task_out(task: Task) -> TaskOut:
         tags=task.tags or [],
         estimate_hours=task.estimate_hours,
         complexity=task.complexity,
+        branch=task.branch,
+        review_url=task.review_url,
     )
 
 
