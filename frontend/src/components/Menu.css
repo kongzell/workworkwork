@@ -19,7 +19,8 @@
   position: absolute;
   top: calc(100% + 6px);
   z-index: 50;
-  min-width: 190px;
+  min-width: 215px;
+  max-width: 280px;
   padding: 6px;
   background: var(--bg-pop);
   border: 1px solid var(--border);
@@ -55,6 +56,26 @@
   font-size: 13px;
   text-align: left;
   cursor: pointer;
+}
+
+/* ชื่อยาว ๆ ให้ตัดด้วย ... แทนที่จะดันเมนูให้สูงขึ้นสองบรรทัด */
+.menu-item > .menu-grow,
+.menu-static > .menu-grow {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* แถวที่แสดงข้อมูลเฉย ๆ กดไม่ได้ — ใช้ตอนสมาชิกดูว่าใครรับงานอยู่ */
+.menu-static {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 7px 10px;
+  font-size: 13px;
+  color: var(--text-dim);
 }
 
 .menu-item:hover { background: var(--bg-hover); }

@@ -41,9 +41,9 @@ def _read_ref(text: str) -> str | None:
 
 
 async def _advance_referenced_tasks(
-    session: AsyncSession, repo: str | None, refs: list[str]
+    session: AsyncSession, repo: str | None, refs: list[str], status: str
 ) -> int:
-    """ย้ายการ์ดที่ commit อ้างถึงไปคอลัมน์ "รอตรวจ"
+    """ย้ายการ์ดที่ commit หรือ PR อ้างถึงไปยังสถานะที่กำหนด
 
     หาเฉพาะโปรเจคที่ผูกกับ repo ที่ยิงเข้ามา ทำให้รหัสย่อซ้ำกันข้าม repo ไม่กวนกัน
     งานที่ปิดไปแล้วไม่ถูกดึงกลับ เพราะ commit ตามหลังการปิดงานเป็นเรื่องปกติ
@@ -68,13 +68,29 @@ async def _advance_referenced_tasks(
                     Task.project_id == project.id, Task.number == int(number)
                 )
             )
-            if task is not None and task.status != "complete":
-                task.status = "review"
-                moved += 1
+            if task is None or task.status == status:
+                continue
+            if task.status == "complete":
+                continue
+            task.status = status
+            moved += 1
 
     if moved:
         await session.commit()
     return moved
+
+
+def _target_status(event: str, payload: dict) -> str:
+    """PR ที่ถูก merge = ผ่านการตรวจแล้ว -> ปิดงาน  ส่วน push ยังแค่ส่งเข้าคิวตรวจ
+
+    การ merge เข้า main ทำได้เฉพาะคนที่ ruleset อนุญาต ซึ่งตั้งไว้ให้เป็นเจ้าของ repo
+    การปิดงานอัตโนมัติจึงเท่ากับเจ้าของกดรับงานเอง
+    """
+    if event == "pull_request":
+        pr = payload.get("pull_request") or {}
+        if payload.get("action") == "closed" and pr.get("merged"):
+            return "complete"
+    return "review"
 
 
 # สีสุ่มให้คนที่ดึงเข้ามาใหม่ ให้ avatar แยกกันออกตอนยังไม่มีรูป
@@ -313,7 +329,7 @@ async def webhook(
     x_github_event: str = Header(default="ping"),
     x_hub_signature_256: str | None = Header(default=None),
     session: AsyncSession = Depends(get_session),
-) -> dict[str, int]:
+) -> dict[str, int | str]:
     """รับ event จาก GitHub แล้วเก็บลง webhook_events"""
     settings = get_settings()
     body = await request.body()
@@ -336,8 +352,9 @@ async def webhook(
 
     repo = (payload.get("repository") or {}).get("full_name")
     refs = [ref for *_, ref in rows if ref]
-    moved = await _advance_referenced_tasks(session, repo, refs)
-    return {"saved": len(saved), "moved": moved}
+    status = _target_status(x_github_event, payload)
+    moved = await _advance_referenced_tasks(session, repo, refs, status)
+    return {"saved": len(saved), "moved": moved, "status": status}
 
 
 def _summarize(event: str, payload: dict) -> list[tuple[str, str | None, str | None, str | None]]:
@@ -361,12 +378,14 @@ def _summarize(event: str, payload: dict) -> list[tuple[str, str | None, str | N
         pr = payload.get("pull_request", {})
         action = payload.get("action", "")
         title = pr.get("title", "")
+        # รหัสงานมักเขียนไว้ในรายละเอียด PR ("Closes KST-003") ไม่ใช่ในชื่อเสมอไป
+        merged = " (merged)" if pr.get("merged") else ""
         return [
             (
-                f"PR {action}: {title}",
+                f"PR {action}{merged}: {title}",
                 (pr.get("user") or {}).get("login"),
                 pr.get("html_url"),
-                _read_ref(title),
+                _read_ref(title) or _read_ref(pr.get("body") or ""),
             )
         ]
 

@@ -165,7 +165,8 @@ async def create_task(
     me: Member = Depends(require_member),
     session: AsyncSession = Depends(get_session),
 ) -> TaskOut:
-    await _get_project(session, project_id, me)
+    """เฉพาะเจ้าของโปรเจคที่เพิ่มงานได้ — สมาชิกรับงานและอัปเดตสถานะได้อย่างเดียว"""
+    await _get_owned_project(session, project_id, me)
 
     # วางต่อท้ายคอลัมน์ที่ระบุ
     last = await session.scalar(

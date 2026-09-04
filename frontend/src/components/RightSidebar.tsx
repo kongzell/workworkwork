@@ -13,6 +13,8 @@ type Props = {
   onOpenTaskRef: (ref: string) => void
   onAddMember: () => void
   onOpenMember: (id: string) => void
+  /** เจ้าของโปรเจคเท่านั้นที่เพิ่มพนักงานได้ */
+  isOwner: boolean
 }
 
 export function RightSidebar({
@@ -21,6 +23,7 @@ export function RightSidebar({
   onOpenTaskRef,
   onAddMember,
   onOpenMember,
+  isOwner,
 }: Props) {
   return (
     <aside className="rs">
@@ -31,6 +34,7 @@ export function RightSidebar({
           tasks={project.tasks}
           onAddMember={onAddMember}
           onOpenMember={onOpenMember}
+          isOwner={isOwner}
         />
       )}
       <GithubActivity onOpenTaskRef={onOpenTaskRef} />
@@ -82,11 +86,13 @@ function TeamPanel({
   tasks,
   onAddMember,
   onOpenMember,
+  isOwner,
 }: {
   members: Member[]
   tasks: Task[]
   onAddMember: () => void
   onOpenMember: (id: string) => void
+  isOwner: boolean
 }) {
   const load = members.map((m) => {
     const open = openTasksOf(tasks, m.id)
@@ -145,9 +151,11 @@ function TeamPanel({
         })}
       </ul>
 
-      <button type="button" className="rs-add-member" onClick={onAddMember}>
-        <IconPlus size={14} /> เพิ่มพนักงาน
-      </button>
+      {isOwner && (
+        <button type="button" className="rs-add-member" onClick={onAddMember}>
+          <IconPlus size={14} /> เพิ่มพนักงาน
+        </button>
+      )}
     </section>
   )
 }

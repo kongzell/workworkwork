@@ -28,6 +28,8 @@ type Props = {
   onSetCategory: (taskId: string, category: string | null) => void
   onDeleteTask: (taskId: string) => void
   onAddMember: () => void
+  /** เจ้าของโปรเจคเท่านั้นที่เพิ่มงานและจัดการสมาชิกได้ */
+  isOwner: boolean
   onClearFilters: () => void
 }
 
@@ -35,7 +37,8 @@ export function Board({
   project, members, query, filters, groupBy, selectedTaskId, currentMemberId,
   onClaimTask, onOpenTask,
   onSetSubtaskStatus, onAddTask, onChangeStatus, onToggleAssignee,
-  onSetPriority, onSetDue, onSetCategory, onDeleteTask, onAddMember, onClearFilters,
+  onSetPriority, onSetDue, onSetCategory, onDeleteTask, onAddMember, isOwner,
+  onClearFilters,
 }: Props) {
   const visible = useMemo(() => {
     const q = query.trim().toLowerCase()
@@ -116,6 +119,8 @@ export function Board({
               members={members}
               subtasks={project.tasks.filter((s) => s.parentId === t.id)}
               taskPrefix={project.taskPrefix}
+              isOwner={isOwner}
+              currentMemberId={currentMemberId}
               expanded={t.id === selectedTaskId}
               canClaim={currentMemberId !== null && t.assigneeIds.length === 0}
               onClaim={() => onClaimTask(t.id)}
@@ -157,7 +162,7 @@ export function Board({
                 )
               })}
 
-              <NewTask onSubmit={(title) => onAddTask(col.addStatus, title)} />
+              {isOwner && <NewTask onSubmit={(title) => onAddTask(col.addStatus, title)} />}
             </section>
           )
         })}

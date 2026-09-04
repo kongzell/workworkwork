@@ -16,6 +16,10 @@ type Props = {
   subtasks: Task[]
   /** รหัสย่อของโปรเจค ใช้ประกอบเป็นรหัสงาน */
   taskPrefix: string
+  /** เจ้าของโปรเจค — วางแผนงานได้ (ความสำคัญ หมวดหมู่ กำหนดส่ง ลบ มอบหมายคนอื่น) */
+  isOwner: boolean
+  /** id ของคนที่ล็อกอินอยู่ ใช้ตัดสินว่ารับงานเองได้ไหม */
+  currentMemberId: string | null
   /** กางรายละเอียดอยู่หรือไม่ */
   expanded: boolean
   /** ล็อกอินอยู่และยังไม่มีใครรับงานนี้ */
@@ -37,7 +41,8 @@ const fmtDue = (iso: string) =>
   new Date(iso + "T00:00:00").toLocaleDateString("th-TH", { day: "numeric", month: "short" })
 
 export function TaskCard({
-  task, members, subtasks, taskPrefix, expanded, canClaim, onClaim, onOpen,
+  task, members, subtasks, taskPrefix, isOwner, currentMemberId, expanded,
+  canClaim, onClaim, onOpen,
   onToggleSubtaskAssignee, onSetSubtaskStatus, onChangeStatus, onToggleAssignee,
   onSetPriority, onSetDue, onSetCategory, onDelete, onAddMember,
 }: Props) {
@@ -56,6 +61,9 @@ export function TaskCard({
 
   // เอาคนที่ถนัดตรงงานขึ้นก่อน จะได้เลือกง่าย
   const sortedMembers = [...members].sort((a, b) => Number(matches(b)) - Number(matches(a)))
+
+  //: สมาชิกส่งงานได้ถึงแค่ "รอตรวจ" — คนตรวจรับคือเจ้าของโปรเจค
+  const movable = isOwner ? STATUSES : STATUSES.filter((s) => s.id !== "complete")
 
   return (
     <article
@@ -78,7 +86,7 @@ export function TaskCard({
             {(close) => (
               <>
                 <MenuLabel>ย้ายไปสถานะ</MenuLabel>
-                {STATUSES.map((s) => (
+                {movable.map((s) => (
                   <MenuItem
                     key={s.id}
                     active={s.id === task.status}
@@ -89,8 +97,8 @@ export function TaskCard({
                     {s.id === task.status && <IconCheck size={14} />}
                   </MenuItem>
                 ))}
-                <MenuLabel>หมวดหมู่</MenuLabel>
-                {CATEGORIES.map((c) => (
+                {isOwner && <MenuLabel>หมวดหมู่</MenuLabel>}
+                {isOwner && CATEGORIES.map((c) => (
                   <MenuItem
                     key={c.id}
                     active={c.id === task.category}
@@ -102,9 +110,11 @@ export function TaskCard({
                   </MenuItem>
                 ))}
 
-                <MenuItem danger onClick={() => { onDelete(); close() }}>
-                  <IconTrash size={14} /> ลบงานนี้
-                </MenuItem>
+                {isOwner && (
+                  <MenuItem danger onClick={() => { onDelete(); close() }}>
+                    <IconTrash size={14} /> ลบงานนี้
+                  </MenuItem>
+                )}
               </>
             )}
           </Menu>
@@ -159,25 +169,57 @@ export function TaskCard({
 
         <div className="card-tools">
           <Menu title="ผู้รับผิดชอบ" trigger={() => <IconUser size={15} />}>
-            {() => (
+            {(close) => (
               <>
                 <MenuLabel>ผู้รับผิดชอบ</MenuLabel>
                 {members.length === 0 && <div className="menu-empty">ยังไม่มีพนักงานในโปรเจค</div>}
-                {sortedMembers.map((m) => (
-                  <MenuItem key={m.id} active={task.assigneeIds.includes(m.id)} onClick={() => onToggleAssignee(m.id)}>
-                    <Avatar member={m} size={18} />
-                    <span className="menu-grow">{m.name}</span>
-                    <span className={`menu-role${matches(m) ? " is-match" : ""}`}>{m.role}</span>
-                    {task.assigneeIds.includes(m.id) && <IconCheck size={14} />}
-                  </MenuItem>
-                ))}
-                <MenuItem onClick={onAddMember}>
-                  <IconPlus size={14} /> เพิ่มพนักงาน
-                </MenuItem>
+
+                {isOwner ? (
+                  <>
+                    {sortedMembers.map((m) => (
+                      <MenuItem
+                        key={m.id}
+                        active={task.assigneeIds.includes(m.id)}
+                        onClick={() => onToggleAssignee(m.id)}
+                      >
+                        <Avatar member={m} size={18} />
+                        <span className="menu-grow">{m.name}</span>
+                        <span className={`menu-role${matches(m) ? " is-match" : ""}`}>{m.role}</span>
+                        {task.assigneeIds.includes(m.id) && <IconCheck size={14} />}
+                      </MenuItem>
+                    ))}
+                    <MenuItem onClick={onAddMember}>
+                      <IconPlus size={14} /> เพิ่มพนักงาน
+                    </MenuItem>
+                  </>
+                ) : (
+                  <>
+                    {/* สมาชิกดูได้ว่าใครทำอยู่ แต่กดสลับได้เฉพาะตัวเอง */}
+                    {assignees.map((m) => (
+                      <div key={m.id} className="menu-static">
+                        <Avatar member={m} size={18} />
+                        <span className="menu-grow">{m.name}</span>
+                        <span className="menu-role">{m.role}</span>
+                      </div>
+                    ))}
+                    {currentMemberId !== null && (
+                      <MenuItem
+                        active={task.assigneeIds.includes(currentMemberId)}
+                        onClick={() => { onToggleAssignee(currentMemberId); close() }}
+                      >
+                        <IconHand size={14} />
+                        <span className="menu-grow">
+                          {task.assigneeIds.includes(currentMemberId) ? "ปล่อยงานนี้" : "รับงานนี้"}
+                        </span>
+                      </MenuItem>
+                    )}
+                  </>
+                )}
               </>
             )}
           </Menu>
 
+          {isOwner && (
           <Menu title="กำหนดส่ง" trigger={() => <IconCalendar size={15} />}>
             {(close) => (
               <>
@@ -192,7 +234,9 @@ export function TaskCard({
               </>
             )}
           </Menu>
+          )}
 
+          {isOwner && (
           <Menu title="ความสำคัญ" trigger={() => <IconFlag size={15} />}>
             {(close) => (
               <>
@@ -207,6 +251,7 @@ export function TaskCard({
               </>
             )}
           </Menu>
+          )}
         </div>
       </div>
 
@@ -271,7 +316,7 @@ export function TaskCard({
                         {(close) => (
                           <>
                             <MenuLabel>ย้ายไปสถานะ</MenuLabel>
-                            {STATUSES.map((st) => (
+                            {movable.map((st) => (
                               <MenuItem
                                 key={st.id}
                                 active={st.id === s.status}

@@ -108,6 +108,8 @@ export default function App() {
 
   // null เมื่อยังไม่มีโปรเจคสักใบ — หน้าจอจะแสดง empty state แทน
   const project = projects.find((p) => p.id === activeProjectId) ?? projects[0] ?? null
+  /** เจ้าของโปรเจคที่เปิดอยู่ — เพิ่มงาน จัดการสมาชิก ลบโปรเจค ได้คนเดียว */
+  const isOwner = project !== null && project.ownerId === auth?.member?.id
 
   const projectMembers = useMemo(
     () => (project ? allMembers.filter((m) => project.memberIds.includes(m.id)) : []),
@@ -256,6 +258,7 @@ export default function App() {
           onAddMember={() => setMemberModalOpen(true)}
           onFocusSearch={() => searchRef.current?.focus()}
           onCollapse={() => setCollapsed(true)}
+          isOwner={isOwner}
         />
       )}
 
@@ -269,7 +272,7 @@ export default function App() {
           starred={project ? starredIds.includes(project.id) : false}
           collapsed={collapsed}
           theme={theme}
-          canDelete={project?.ownerId === auth?.member?.id}
+          canDelete={isOwner}
           groupBy={groupBy}
           auth={auth}
           onChangeGroupBy={setGroupBy}
@@ -325,6 +328,7 @@ export default function App() {
               setFilters({ assigneeId: null, priority: null })
               setQuery("")
             }}
+            isOwner={isOwner}
           />
         )}
       </main>
@@ -339,6 +343,7 @@ export default function App() {
             setSelectedMemberId(id)
             setSelectedTaskId(null)
           }}
+          isOwner={isOwner}
         />
 
         {selectedMember && project && (
@@ -354,7 +359,7 @@ export default function App() {
         )}
       </div>
 
-      {project && (
+      {isOwner && (
         <button
           type="button"
           className="ai-fab"

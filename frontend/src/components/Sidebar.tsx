@@ -18,13 +18,15 @@ type Props = {
   onSelectProject: (id: string) => void
   onOpenAddProject: () => void
   onAddMember: () => void
+  /** เจ้าของโปรเจคเท่านั้นที่จัดการสมาชิกได้ */
+  isOwner: boolean
   onFocusSearch: () => void
   onCollapse: () => void
 }
 
 export function Sidebar({
   projects, activeProjectId, starredIds, members, filters, onChangeFilters,
-  onSelectProject, onOpenAddProject, onAddMember, onFocusSearch, onCollapse,
+  onSelectProject, onOpenAddProject, onAddMember, isOwner, onFocusSearch, onCollapse,
 }: Props) {
   const filterOn = filters.assigneeId !== null || filters.priority !== null
 
@@ -118,9 +120,11 @@ export function Sidebar({
             <MenuItem onClick={() => { onOpenAddProject(); close() }}>
               <IconTaskList size={14} /> โปรเจคใหม่
             </MenuItem>
-            <MenuItem onClick={() => { onAddMember(); close() }}>
-              <IconUsers size={14} /> พนักงานใหม่
-            </MenuItem>
+            {isOwner && (
+              <MenuItem onClick={() => { onAddMember(); close() }}>
+                <IconUsers size={14} /> พนักงานใหม่
+              </MenuItem>
+            )}
           </>
         )}
       </Menu>
