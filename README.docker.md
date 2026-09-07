@@ -75,17 +75,6 @@ git commit -m "พัฒนา REST API สินค้า KST-003"   # กา�
 merge PR ที่อ้างรหัสนั้น → การ์ดเป็น **เสร็จแล้ว** · งานที่ปิดแล้วไม่ถูกดึงกลับ
 อ่านเฉพาะบรรทัดแรกของ commit message และชื่อ/รายละเอียด PR
 
-## Deploy (Render + Neon)
-
-รวม frontend กับ API ไว้ที่ service เดียว เพราะ session cookie เป็น `SameSite=Lax`
-ถ้าแยกคนละโดเมนเบราว์เซอร์จะไม่ส่ง cookie ข้ามไป
-
-1. สร้าง Postgres ที่ neon.tech → คัดลอก connection string แบบ **pooled**
-2. Render → New Web Service → Runtime **Docker** · Dockerfile Path `./Dockerfile` · Health Check `/api/health`
-3. ใส่ตัวแปรตามตารางข้างบน (`SESSION_SECRET`/`TOKEN_SECRET` กด Generate)
-4. เพิ่ม Redirect URI ของโดเมนที่ได้ ลงใน OAuth App
-5. Webhook → Payload URL `https://<โดเมน>/api/github/webhook` · Content type **application/json** · events: Pushes + Pull requests
-
 ## คำสั่งที่ใช้บ่อย
 
 ```bash
