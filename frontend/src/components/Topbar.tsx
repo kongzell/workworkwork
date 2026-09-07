@@ -25,7 +25,6 @@ type Props = {
   groupBy: "status" | "category"
   auth: AuthStatus | null
   onChangeGroupBy: (g: "status" | "category") => void
-  onDevLogin: () => void
   onLogout: () => void
   onChangeRole: (role: string) => void
   onQueryChange: (q: string) => void
@@ -39,7 +38,7 @@ type Props = {
 
 export function Topbar({
   project, projects, taskCount, query, searchRef, starred, collapsed, theme,
-  canDelete, groupBy, auth, onChangeGroupBy, onDevLogin, onLogout, onChangeRole, onQueryChange,
+  canDelete, groupBy, auth, onChangeGroupBy, onLogout, onChangeRole, onQueryChange,
   onSelectProject, onRenameProject, onDeleteProject, onToggleStar, onExpand,
   onChangeTheme,
 }: Props) {
@@ -176,7 +175,7 @@ export function Topbar({
           <span className="tb-divider" />
             </>
           )}
-          <AuthChip auth={auth} onDevLogin={onDevLogin} onLogout={onLogout} onChangeRole={onChangeRole} />
+          <AuthChip auth={auth} onLogout={onLogout} onChangeRole={onChangeRole} />
           <ThemePicker value={theme} onChange={onChangeTheme} />
         </div>
       </div>
@@ -219,12 +218,10 @@ function RenameInput({
 /** ปุ่มเข้าสู่ระบบ / ชิปแสดงคนที่ล็อกอินอยู่ */
 function AuthChip({
   auth,
-  onDevLogin,
   onLogout,
   onChangeRole,
 }: {
   auth: AuthStatus | null
-  onDevLogin: () => void
   onLogout: () => void
   onChangeRole: (role: string) => void
 }) {
@@ -274,19 +271,6 @@ function AuthChip({
       <a className="tb-login" href="/api/auth/github">
         <IconGithub size={14} /> เข้าสู่ระบบด้วย GitHub
       </a>
-    )
-  }
-
-  if (auth.devLogin) {
-    return (
-      <button
-        type="button"
-        className="tb-login"
-        title="ยังไม่ได้ตั้ง OAuth App — เข้าสู่ระบบด้วยพนักงานคนแรกเพื่อทดสอบ"
-        onClick={onDevLogin}
-      >
-        <IconGithub size={14} /> เข้าสู่ระบบ (ทดสอบ)
-      </button>
     )
   }
 

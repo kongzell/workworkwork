@@ -1,11 +1,3 @@
-# Blueprint สำหรับ Render — https://render.com/docs/blueprint-spec
-#
-# ฐานข้อมูลใช้ Neon (คนละเจ้ากับ Render) จึงไม่ประกาศ databases: ไว้ที่นี่
-# ให้ไปสร้างที่ neon.tech แล้วเอา connection string มาใส่เป็น DATABASE_URL
-#
-# ค่าที่ตั้ง sync: false = Render จะถามตอน deploy ครั้งแรก และไม่เก็บลง git
-# ห้ามใส่ค่าจริงของ secret ลงไฟล์นี้เด็ดขาด เพราะไฟล์นี้ขึ้น git
-
 services:
   - type: web
     name: follow-up
@@ -46,10 +38,8 @@ services:
       - key: TOKEN_SECRET
         generateValue: true
 
-      # โหมดทดสอบต้องปิดบน production
+      # โหมดข้อมูลตัวอย่างของ AI ต้องปิดบน production
       - key: AI_MOCK
-        value: "false"
-      - key: AUTH_MOCK
         value: "false"
 
       # โดเมนเดียวกับ frontend อยู่แล้ว ไม่ต้องเปิด CORS ให้ใคร

@@ -45,8 +45,6 @@ class Settings(BaseSettings):
     #: ใช้เข้ารหัส github_token ที่เก็บในฐานข้อมูล
     #: ถ้าไม่ตั้งจะยืม session_secret มาใช้ — แยกกันดีกว่าเพราะเปลี่ยนคนละจังหวะ
     token_secret: str = ""
-    #: เปิดไว้เพื่อทดสอบ UI โดยไม่ต้องมี OAuth App (จะมี /api/auth/dev-login ให้ใช้)
-    auth_mock: bool = False
 
     @property
     def secrets_ready(self) -> bool:
@@ -59,7 +57,7 @@ class Settings(BaseSettings):
 
     @property
     def auth_ready(self) -> bool:
-        return self.github_ready or self.auth_mock
+        return self.github_ready
 
     @property
     def ai_ready(self) -> bool:

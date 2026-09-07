@@ -145,8 +145,6 @@ class BreakdownResult(ApiModel):
 class AuthStatus(ApiModel):
     #: ตั้ง GITHUB_CLIENT_ID/SECRET แล้วหรือยัง
     configured: bool
-    #: เปิด /api/auth/dev-login ให้ใช้อยู่หรือไม่
-    dev_login: bool
     member: MemberOut | None = None
 
 

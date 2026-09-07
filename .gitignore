@@ -15,10 +15,8 @@ __pycache__/
 *.db
 
 # --- secrets ---
-# .env มีค่าจริงของแต่ละเครื่อง — commit เฉพาะ .env.example
 .env
 .env.*
-!.env.example
 
 # --- logs ---
 logs
@@ -40,3 +38,5 @@ Thumbs.db
 *.njsproj
 *.sln
 *.sw?
+
+.claude

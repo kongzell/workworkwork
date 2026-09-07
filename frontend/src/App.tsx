@@ -4,7 +4,7 @@ import type { ThemeId } from "./themes"
 import { loadTheme, saveTheme } from "./themes"
 import type { AuthStatus, SubtaskSuggestion } from "./api"
 import * as api from "./api"
-import { createMemberApi, devLogin, getAuthStatus, getMembers, logout, updateMyRole } from "./api"
+import { createMemberApi, getAuthStatus, getMembers, logout, updateMyRole } from "./api"
 import { AddMemberModal } from "./components/AddMemberModal"
 import { AddProjectModal } from "./components/AddProjectModal"
 import { AiBreakdownModal } from "./components/AiBreakdownModal"
@@ -92,7 +92,7 @@ export default function App() {
       setAuth(await getAuthStatus())
     } catch {
       // backend ยังไม่ขึ้น — ถือว่ายังไม่ได้ล็อกอิน
-      setAuth({ configured: false, devLogin: false, member: null })
+      setAuth({ configured: false, member: null })
     }
   }, [])
 
@@ -283,10 +283,6 @@ export default function App() {
           onToggleStar={toggleStar}
           onExpand={() => setCollapsed(false)}
           onChangeTheme={setTheme}
-          onDevLogin={async () => {
-            await devLogin()
-            await refreshAuth()
-          }}
           onLogout={async () => {
             await logout()
             await refreshAuth()

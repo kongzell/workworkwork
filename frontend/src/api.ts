@@ -216,18 +216,11 @@ export type AuthStatus = {
   /** ตั้ง GITHUB_CLIENT_ID/SECRET แล้วหรือยัง */
   configured: boolean
   /** เปิดปุ่มเข้าสู่ระบบสำหรับทดสอบไว้หรือไม่ */
-  devLogin: boolean
   member: AuthMember | null
 }
 
 export async function getAuthStatus(): Promise<AuthStatus> {
   const res = await fetch("/api/auth/status")
-  if (!res.ok) throw new ApiError(await readError(res), res.status)
-  return res.json()
-}
-
-export async function devLogin(): Promise<AuthMember> {
-  const res = await fetch("/api/auth/dev-login", { method: "POST" })
   if (!res.ok) throw new ApiError(await readError(res), res.status)
   return res.json()
 }

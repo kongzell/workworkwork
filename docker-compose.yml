@@ -40,7 +40,6 @@ services:
       GITHUB_REPO: ${GITHUB_REPO:-}
       GITHUB_WEBHOOK_SECRET: ${GITHUB_WEBHOOK_SECRET:-}
       SESSION_SECRET: ${SESSION_SECRET:-dev-secret-change-me}
-      AUTH_MOCK: ${AUTH_MOCK:-false}
     ports:
       - "${API_PORT:-3000}:3000"
     depends_on:

@@ -34,7 +34,6 @@ async def status(member: Member | None = Depends(current_member)) -> AuthStatus:
     settings = get_settings()
     return AuthStatus(
         configured=settings.github_ready,
-        dev_login=settings.auth_mock and not settings.github_ready,
         member=MemberOut.model_validate(member) if member else None,
     )
 
@@ -102,27 +101,6 @@ async def github_callback(
     response = RedirectResponse(url="/", status_code=303)
     _set_cookie(response, member.id, request)
     return response
-
-
-@router.post("/dev-login", response_model=MemberOut)
-async def dev_login(
-    request: Request,
-    response: Response,
-    session: AsyncSession = Depends(get_session),
-) -> Member:
-    """เข้าสู่ระบบด้วยพนักงานคนแรกในระบบ — เปิดใช้ได้เมื่อ AUTH_MOCK=true เท่านั้น
-
-    มีไว้ทดสอบหน้าจอตอนที่ยังไม่ได้สร้าง OAuth App
-    """
-    settings = get_settings()
-    if not settings.auth_mock:
-        raise HTTPException(404, "ปิดอยู่ — ตั้ง AUTH_MOCK=true ก่อนถึงจะใช้ได้")
-
-    member = await session.scalar(select(Member).order_by(Member.created_at))
-    if member is None:
-        raise HTTPException(404, "ยังไม่มีพนักงานในระบบ — รัน python -m app.seed ก่อน")
-    _set_cookie(response, member.id, request)
-    return member
 
 
 @router.patch("/me", response_model=MemberOut)
