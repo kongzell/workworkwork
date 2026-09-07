@@ -114,6 +114,20 @@ export const COMPLEXITY_POINTS: Record<string, number> = {
 
 export const UNRATED_POINTS = 2
 
+/** เพดานแต้มที่คนหนึ่งควรถืออยู่พร้อมกัน — เกินกว่านี้ถือว่างานล้นมือ
+ *
+ * 10 แต้ม ≈ งานยาก 2 ใบ หรืองานกลาง 3 ใบ กับงานง่ายอีกใบ
+ * ใช้ค่าเดียวกันทุกคนเพื่อให้เทียบกันได้ตรง ๆ ว่าใครแบกเกิน
+ */
+export const WORKLOAD_CAPACITY = 10
+
+/** ระดับภาระเทียบกับเพดาน — ใช้เลือกสีหลอด */
+export const workloadLevel = (points: number): "ok" | "busy" | "over" => {
+  if (points >= WORKLOAD_CAPACITY) return "over"
+  if (points >= WORKLOAD_CAPACITY * 0.7) return "busy"
+  return "ok"
+}
+
 /** แต้มของงานหนึ่งใบ */
 export const taskPoints = (t: Task): number =>
   t.complexity ? (COMPLEXITY_POINTS[t.complexity] ?? UNRATED_POINTS) : UNRATED_POINTS

@@ -131,8 +131,13 @@
   min-width: 2px;
 }
 
+/* ระดับภาระเทียบกับเพดาน — เขียวคือยังรับได้ ส้มคือเริ่มแน่น แดงคือล้นมือ */
+.rs-load-fill.is-ok { background: var(--status-complete); }
+.rs-load-fill.is-busy { background: var(--prio-high); }
 .rs-load-fill.is-over { background: var(--danger); }
-.rs-load-fill.is-under { background: var(--status-complete); }
+
+.rs-load-num.is-busy { color: var(--prio-high); }
+.rs-load-num.is-over { color: var(--danger); font-weight: 600; }
 
 .rs-load-num {
   font-family: var(--mono);

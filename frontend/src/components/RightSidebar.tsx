@@ -2,7 +2,9 @@ import { useEffect, useState } from "react"
 import type { Commit, SystemHealth, WebhookEvent } from "../api"
 import { applySuggestion, getCommits, getSystemHealth, getWebhookEvents } from "../api"
 import type { Member, Project, Task } from "../types"
-import { openTasksOf, STATUSES, taskPoints } from "../types"
+import {
+  openTasksOf, STATUSES, taskPoints, WORKLOAD_CAPACITY, workloadLevel,
+} from "../types"
 import { Avatar } from "./Avatar"
 import { IconChevronRight, IconPlus } from "./Icons"
 import "./RightSidebar.css"
@@ -104,9 +106,6 @@ function TeamPanel({
   })
 
   const total = load.reduce((sum, l) => sum + l.points, 0)
-  const heaviest = Math.max(1, ...load.map((l) => l.points))
-  //: ถ้าแบ่งงานเท่ากันทุกคนควรได้คนละเท่านี้
-  const fairShare = members.length > 0 ? total / members.length : 0
 
   return (
     <section className="rs-panel">
@@ -118,14 +117,12 @@ function TeamPanel({
       {members.length === 0 && <p className="rs-empty">ยังไม่มีใครในโปรเจคนี้</p>}
 
       {total > 0 && (
-        <p className="rs-fair">แบ่งเท่ากันควรได้คนละ {fairShare.toFixed(1)} แต้ม</p>
+        <p className="rs-fair">งานในโปรเจครวม {total} แต้ม · เพดานคนละ {WORKLOAD_CAPACITY}</p>
       )}
 
       <ul className="rs-team">
         {load.map(({ member, count, points }) => {
-          // เกินส่วนแบ่งที่ควรได้มาก = งานหนักเกินคนอื่น
-          const over = fairShare > 0 && points > fairShare * 1.4
-          const under = fairShare > 0 && points < fairShare * 0.6
+          const level = workloadLevel(points)
           return (
             <li key={member.id}>
               <button type="button" className="rs-team-row" onClick={() => onOpenMember(member.id)}>
@@ -137,12 +134,12 @@ function TeamPanel({
                 <div className="rs-load">
                   <span className="rs-load-bar">
                     <span
-                      className={`rs-load-fill${over ? " is-over" : ""}${under ? " is-under" : ""}`}
-                      style={{ width: `${(points / heaviest) * 100}%` }}
+                      className={`rs-load-fill is-${level}`}
+                      style={{ width: `${Math.min(100, (points / WORKLOAD_CAPACITY) * 100)}%` }}
                     />
                   </span>
-                  <span className="rs-load-num">
-                    {points} แต้ม · {count} งาน
+                  <span className={`rs-load-num is-${level}`}>
+                    {points}/{WORKLOAD_CAPACITY} · {count} งาน
                   </span>
                 </div>
               </button>
@@ -197,7 +194,13 @@ export function MemberDetailPanel({
         </div>
 
         <dl className="rs-fields">
-          <div><dt>ภาระงานที่ค้าง</dt><dd>{points} แต้ม</dd></div>
+          <div>
+            <dt>ภาระงานที่ค้าง</dt>
+            <dd className={`rs-load-num is-${workloadLevel(points)}`}>
+              {points}/{WORKLOAD_CAPACITY} แต้ม
+              {points >= WORKLOAD_CAPACITY && " · งานล้นมือ"}
+            </dd>
+          </div>
           <div><dt>จำนวนงานที่ค้าง</dt><dd>{open.length} งาน</dd></div>
           <div><dt>เวลาที่ประเมิน</dt><dd>{hours ? `${hours.toFixed(1)} ชม.` : "—"}</dd></div>
         </dl>
