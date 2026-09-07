@@ -1,486 +1,96 @@
-# การรันด้วย Docker
+# Follow-up
 
-## เตรียมตัวครั้งแรก
+บอร์ดติดตามงานที่ผูกกับ GitHub — แตกงานด้วย AI, ดึงทีมจาก collaborator ของ repo
+และขยับการ์ดเองเมื่อมี commit หรือ merge PR
+
+React 19 + TypeScript · FastAPI + SQLAlchemy (async) · PostgreSQL 18 · Gemini · GitHub OAuth
+
+## เริ่มใช้งาน
 
 ```bash
-cp .env.example .env
+cp .env.example .env          # แล้วเติมค่าตามตารางข้างล่าง
+docker compose up -d --build  # เปิด http://localhost:8081
 ```
 
-## โหมด production (nginx + uvicorn)
-
-```bash
-docker compose up -d --build
-```
-
-| service | คำอธิบาย | URL |
-| --- | --- | --- |
-| `web` | nginx เสิร์ฟไฟล์ที่ vite build แล้ว + proxy `/api` ไปที่ `api` | http://localhost:8081 |
-| `api` | FastAPI (uvicorn) | http://localhost:3000/api/health |
-| `db`  | PostgreSQL 18 (เก็บข้อมูลใน volume `db-data`) | localhost:5432 |
-
-เพราะ nginx proxy `/api` ให้แล้ว หน้าเว็บกับ API จึงอยู่ origin เดียวกัน — ไม่ต้องพึ่ง CORS
-
-หน้า Swagger อยู่ที่ http://localhost:8081/api/docs (วางไว้ใต้ `/api` เพื่อให้ผ่าน proxy ได้)
-
-## โหมด dev (hot reload)
+โหมด dev (hot reload, เว็บย้ายไปพอร์ต 5173):
 
 ```bash
 docker compose -f docker-compose.yml -f docker-compose.dev.yml up --build
 ```
 
-- vite dev server: http://localhost:5173 (proxy `/api` ไปที่ container `api`)
-- API: http://localhost:3000/api/health · docs: http://localhost:5173/api/docs
-- `backend/app` และ `frontend` ถูก bind mount เข้า container — แก้โค้ดแล้วรีโหลดเอง
+> สลับโหมดแล้วต้องแก้ `GITHUB_CALLBACK_URL` ให้ตรงพอร์ต และเพิ่ม URL นั้นใน OAuth App ด้วย
 
-> ถ้า hot reload ไม่ทำงาน: bind mount จาก Windows filesystem บางทีไม่ส่ง inotify event —
-> compose เปิด polling ให้แล้ว (`VITE_POLLING`, `WATCHFILES_FORCE_POLLING`) ถ้ายังไม่ติดให้รันบนเครื่องแทน
+## ตัวแปรใน .env
 
-## รันบนเครื่อง (ไม่ผ่าน docker)
-
-ครั้งแรก สร้าง venv แล้วลง dependency:
-
-```bash
-python -m venv backend/.venv && backend/.venv/Scripts/activate && pip install -r backend/requirements-dev.txt
-```
-
-จากนั้น (โดย venv ยัง activate อยู่) รันทั้ง api + web พร้อมกัน:
-
-```bash
-npm run dev
-```
-
-| คำสั่ง | ทำอะไร |
+| ตัวแปร | ใส่อะไร |
 | --- | --- |
-| `npm run dev` | รัน uvicorn (:3000) + vite (:5173) พร้อมกัน |
-| `npm run dev:api` | รันเฉพาะ API |
-| `alembic upgrade head` (ใน `backend/`) | สร้าง/อัปเดตตารางใน database |
-| `alembic revision --autogenerate -m "..."` | สร้าง migration ใหม่หลังแก้ `app/models.py` |
-| `python -m app.seed` | ใส่ข้อมูลตัวอย่าง (`--reset` เพื่อล้างก่อน) |
-| `ruff check .` (ใน `backend/`) | lint |
+| `DATABASE_URL` | ปล่อยว่างได้ตอนใช้ docker · ตอน deploy ใส่ของ Neon (วางทั้งเส้นรวม `?sslmode=`) |
+| `SESSION_SECRET` | ใช้เซ็น cookie — **ตอน deploy ต้องสุ่มใหม่** |
+| `TOKEN_SECRET` | ใช้เข้ารหัส GitHub token ในฐานข้อมูล |
+| `GITHUB_CLIENT_ID` / `GITHUB_CLIENT_SECRET` | จาก OAuth App |
+| `GITHUB_CALLBACK_URL` | ต้องตรงกับ Redirect URI ใน OAuth App เป๊ะ |
+| `GITHUB_REPO` | `owner/repo` ที่จะดึง commit มาแสดง |
+| `GITHUB_WEBHOOK_SECRET` | ค่าเดียวกับที่ตั้งตอนสร้าง webhook |
+| `GEMINI_API_KEY` | จาก aistudio.google.com |
 
-ใช้ **Postgres ตัวเดียวกันทั้ง docker และการรันบนเครื่อง** — ต้องเปิด container `db` ไว้เสมอ:
+เช็คว่าครบไหมที่ `/api/system/health` — ต้องได้ `databaseOk` · `authReady` · `secretsReady` เป็น `true`
 
-```bash
-docker compose up -d db
+## โครงสร้าง
+
+```
+frontend/            หน้าเว็บ (บอร์ด การ์ด แถบข้าง)
+backend/app/
+  routers/           endpoint ทั้งหมด
+  models.py          ตาราง 6 ตัว: members projects tasks
+                     project_members task_assignees webhook_events
+  crypto.py          เข้ารหัส github_token ก่อนเก็บ
+  db.py              แปลง DSN ของ Neon ให้ asyncpg ใช้ได้
+backend/alembic/     migration — container รัน upgrade head ให้เองตอน start
+Dockerfile           image รวม frontend + API สำหรับ deploy
+docker-compose.yml   รันครบชุดในเครื่อง
 ```
 
-> **พอร์ต 55432 ไม่ใช่ 5432** เพราะเครื่องนี้มี PostgreSQL ติดตั้งอยู่แล้ว 2 ตัวที่ยึด 5432 กับ 5433 ไว้
-> ถ้าย้ายไปเครื่องอื่นที่ว่าง เปลี่ยน `DB_PORT` ใน `.env` กลับเป็น 5432 ได้
+## สิทธิ์
 
-> **เลือกทางเดียว** — docker กับ `npm run dev` ใช้พอร์ต 3000 เหมือนกัน ถ้ารันพร้อมกันจะชนกัน
-> สั่ง `docker compose stop api` ก่อนถ้าจะรันบนเครื่อง (หรือตั้ง `API_PORT=3300 npm run dev:api`)
+ต้องล็อกอินก่อนถึงเรียก API ได้ และเห็นเฉพาะโปรเจคที่ตัวเองเป็นสมาชิก
+คนที่ถูกเชิญเข้า repo จะถูกใส่เข้าโปรเจคให้อัตโนมัติตอนล็อกอิน
+
+| | เจ้าของ | สมาชิก |
+| --- | --- | --- |
+| เพิ่มงาน · AI แตกงาน · เพิ่มพนักงาน | ✅ | ❌ |
+| ความสำคัญ · หมวดหมู่ · กำหนดส่ง · ลบงาน | ✅ | ❌ |
+| ปิดงานเป็น "เสร็จแล้ว" | ✅ | ❌ |
+| ย้าย รอเริ่ม/กำลังทำ/รอตรวจ · รับงาน | ✅ | ✅ |
+
+คนนอกได้ `404` ไม่ใช่ `403` เพื่อไม่ยืนยันว่า id นั้นมีอยู่จริง
+
+## รหัสงาน
+
+การ์ดทุกใบมีรหัส `<รหัสย่อโปรเจค>-<เลข>` เช่น `KST-001` (รหัสย่อตั้งจากอักษรตัวแรกของชื่อ repo)
+
+```bash
+git commit -m "พัฒนา REST API สินค้า KST-003"   # การ์ดย้ายไป "รอตรวจ"
+```
+
+merge PR ที่อ้างรหัสนั้น → การ์ดเป็น **เสร็จแล้ว** · งานที่ปิดแล้วไม่ถูกดึงกลับ
+อ่านเฉพาะบรรทัดแรกของ commit message และชื่อ/รายละเอียด PR
+
+## Deploy (Render + Neon)
+
+รวม frontend กับ API ไว้ที่ service เดียว เพราะ session cookie เป็น `SameSite=Lax`
+ถ้าแยกคนละโดเมนเบราว์เซอร์จะไม่ส่ง cookie ข้ามไป
+
+1. สร้าง Postgres ที่ neon.tech → คัดลอก connection string แบบ **pooled**
+2. Render → New Web Service → Runtime **Docker** · Dockerfile Path `./Dockerfile` · Health Check `/api/health`
+3. ใส่ตัวแปรตามตารางข้างบน (`SESSION_SECRET`/`TOKEN_SECRET` กด Generate)
+4. เพิ่ม Redirect URI ของโดเมนที่ได้ ลงใน OAuth App
+5. Webhook → Payload URL `https://<โดเมน>/api/github/webhook` · Content type **application/json** · events: Pushes + Pull requests
 
 ## คำสั่งที่ใช้บ่อย
 
 ```bash
-docker compose logs -f api        # ดู log
-docker compose exec api sh        # เข้า shell ใน container
-docker compose down               # หยุด (ข้อมูล db ยังอยู่)
-docker compose down -v            # หยุด + ลบข้อมูล db
+docker compose logs -f api   # ดู log
+docker compose down          # หยุด (ข้อมูลยังอยู่)
+docker compose down -v       # หยุด + ลบข้อมูล
+cd backend && alembic revision --autogenerate -m "..."   # migration ใหม่หลังแก้ models.py
 ```
-
-## Database
-
-| ตาราง | เก็บอะไร |
-| --- | --- |
-| `members` | พนักงาน (ชื่อ, ตำแหน่ง, สี avatar) |
-| `projects` | โปรเจค (+ `github_repo` ที่ผูกไว้) |
-| `tasks` | งาน (สถานะ, ความสำคัญ, กำหนดส่ง, หมวดหมู่, tag, เวลาที่ประเมิน, `parent_id` = งานย่อย) |
-| `webhook_events` | event ที่ GitHub ยิงเข้ามา |
-| `project_members` | พนักงานคนไหนอยู่โปรเจคไหน |
-| `task_assignees` | งานใบไหนมอบให้ใคร (หนึ่งงานมีได้หลายคน) |
-
-migration อยู่ใน `backend/alembic/versions/` และ **container รัน `alembic upgrade head` ให้อัตโนมัติ**
-ทุกครั้งที่ start ไม่ต้องสั่งเอง
-
-ใส่พนักงานตั้งต้น (3 คน) — **ไม่ได้สร้างโปรเจคตัวอย่างให้**:
-
-```bash
-docker compose exec api python -m app.seed
-```
-
-เปิดเว็บครั้งแรกจะเจอหน้า "ยังไม่มีโปรเจค" — กด **เพิ่มโปรเจค** เพื่อเลือก repo จาก GitHub
-หรือสร้างโปรเจคเปล่า
-
-> **ข้อมูลทั้งหมดบันทึกลง Postgres จริงแล้ว** — โปรเจค งาน งานย่อย ผู้รับผิดชอบ สมาชิก
-> รีเฟรชหรือปิดเบราว์เซอร์แล้วเปิดใหม่ ข้อมูลยังอยู่ครบ
-> ถ้าบันทึกไม่สำเร็จจะมีแถบแดงขึ้นกลางจอบอกสาเหตุ และดึงข้อมูลจริงจาก server กลับมาแสดงแทน
-
-### เมื่อแก้ตาราง
-
-1. แก้ `backend/app/models.py`
-2. `alembic revision --autogenerate -m "อธิบายสั้น ๆ"`
-3. เปิดไฟล์ที่ได้ใน `alembic/versions/` อ่านทวนก่อนใช้ — autogenerate ไม่ได้ถูกเสมอ
-
-## AI แตกงานย่อย (Gemini)
-
-ปุ่ม **แตกงานด้วย AI** บนแถบหัว รับหัวข้องานกว้าง ๆ แล้วให้ Gemini แตกเป็นงานย่อยพร้อม
-หมวดหมู่ · tag ทักษะที่ต้องใช้ · เวลาที่ประเมิน · ระดับความยาก
-
-API key อยู่ฝั่ง backend เท่านั้น ไม่หลุดไปที่เบราว์เซอร์:
-
-```
-frontend  →  POST /api/ai/breakdown  →  FastAPI  →  Gemini
-```
-
-### เปิดใช้งานจริง
-
-1. ขอ key ที่ https://aistudio.google.com/apikey
-2. ใส่ใน `.env`:
-   ```
-   GEMINI_API_KEY=<key ของคุณ>
-   AI_MOCK=false
-   ```
-3. `docker compose up -d --build api`
-
-ระหว่างที่ยังไม่มี key ให้ตั้ง `AI_MOCK=true` จะได้ข้อมูลตัวอย่างไว้ลอง UI
-และหน้าจอจะขึ้นแถบเตือนสีส้มว่ากำลังใช้ข้อมูลปลอมอยู่ (พอมี key จริงแล้วระบบจะใช้ Gemini เสมอ
-ไม่สนใจค่า `AI_MOCK`)
-
-### เรื่องชื่อโมเดล
-
-Google ปิด `gemini-2.5-flash` สำหรับ key ที่สร้างใหม่แล้ว ตอนนี้ตั้งไว้เป็น **`gemini-3.6-flash`**
-ถ้าวันหลังเจอ error `404 ... no longer available to new users` ให้เปลี่ยน `GEMINI_MODEL` ใน `.env`
-เป็นชื่อรุ่นที่ error บอกมา แล้ว `docker compose up -d api`
-
-หนึ่งครั้งใช้เวลาราว 15 วินาที ฝั่ง client ตั้ง timeout ไว้ 180 วินาที
-
-### จัดคอลัมน์ตามหมวดหมู่
-
-เมนู **จัดกลุ่ม** บนแถบหัว สลับระหว่างจัดคอลัมน์ตาม *สถานะ* กับตาม *หมวดหมู่*
-(Frontend / Backend / Database / ...) ที่ AI เติมให้ — เปลี่ยนหมวดหมู่เองได้จากเมนู `⋯` บนการ์ด
-
-## เข้าสู่ระบบด้วย GitHub
-
-1. สร้าง OAuth App ที่ https://github.com/settings/developers
-2. **Authorization callback URL** ใส่ให้ตรงกับ `GITHUB_CALLBACK_URL` เป๊ะ ๆ
-   (ค่าเริ่มต้นคือ `http://localhost:8081/api/auth/github/callback`)
-3. ใส่ค่าใน `.env` แล้ว `docker compose up -d api`
-
-```
-GITHUB_CLIENT_ID=<client id>
-GITHUB_CLIENT_SECRET=<client secret>
-AUTH_MOCK=false
-```
-
-scope ที่ขอคือ `read:user read:org` — อ่านโปรไฟล์กับรายชื่อสมาชิก org ไม่ได้ขอสิทธิ์แตะ repo
-
-### เลือกสายที่ถนัด
-
-GitHub ไม่มีข้อมูลนี้ ต้องเลือกเองจากเมนูบัญชีมุมขวาบน:
-**Frontend / Backend / Fullstack / Database / Design / DevOps / Testing**
-
-ตั้งชื่อให้ตรงกับหมวดหมู่ที่ AI ใช้ เพื่อให้จับคู่คนกับงานได้ — เวลากด assign
-คนที่ถนัดตรงกับหมวดหมู่ของงานจะ**ขึ้นก่อนและไฮไลต์เป็นสีเขียว**
-(`Fullstack` นับว่าตรงทั้งงาน Frontend และ Backend)
-
-เบื้องหลังคือ `PATCH /api/auth/me` ซึ่งแก้ได้เฉพาะข้อมูลของตัวเอง
-
-> บทบาทเก็บใน `members.role` เป็นค่าเดียวทั้งระบบ — ยังไม่ได้แยกตามโปรเจค
-> ถ้าอยากให้คนเดียวกันมีบทบาทต่างกันแต่ละโปรเจค ต้องย้ายไปเก็บใน `project_members`
-
-> ระหว่างที่ยังไม่มี OAuth App ให้ตั้ง `AUTH_MOCK=true` จะมีปุ่ม **เข้าสู่ระบบ (ทดสอบ)**
-> ที่ล็อกอินเป็นพนักงานคนแรกในฐานข้อมูล ใช้ลอง UI ได้เลย
-
-## รหัสงาน — ผูก commit กับการ์ด
-
-การ์ดทุกใบมีรหัสประจำตัวเป็น `<รหัสย่อของโปรเจค>-<เลข 3 หลัก>` เช่น `KST-001`
-พิมพ์รหัสนี้ในข้อความ commit แล้วการ์ดจะย้ายไป **รอตรวจ** ให้อัตโนมัติ
-
-```bash
-git commit -m "พัฒนา REST API สินค้า KST-003"
-```
-
-### รหัสย่อของโปรเจค
-
-ตั้งอัตโนมัติจากอักษรตัวแรกของแต่ละคำในชื่อ repo
-
-| repo | รหัสย่อ |
-| --- | --- |
-| `kongzell/kongzell-s-test` | `KST` |
-| `kongzell/Follow-up` | `FU` |
-| `kongzell/...3` | `TASK` (ชื่อไม่มีตัวอักษรเลย) |
-
-เจ้าของโปรเจคเปลี่ยนได้ผ่าน `PATCH /api/projects/{id}` ฟิลด์ `taskPrefix`
-(ตัวอักษรกับตัวเลข ขึ้นต้นด้วยตัวอักษร ยาวไม่เกิน 10)
-
-### รูปแบบที่ระบบอ่านได้
-
-```
-TASK_REF = re.compile(r"#?\b([A-Za-z][A-Za-z0-9]{0,9})-0*(\d+)\b")
-```
-
-| เขียนแบบนี้ | ผล |
-| --- | --- |
-| `แก้ API KST-003` | ✅ |
-| `#KST-3` | ✅ ไม่เติมศูนย์และมี `#` ก็ได้ |
-| `kst-3` | ✅ ตัวเล็กได้ |
-| `แก้ KST 003` | ❌ ไม่มีขีด |
-
-**อ่านแค่บรรทัดแรก** ของ commit message และชื่อ PR — รหัสที่อยู่บรรทัดถัด ๆ ไปจะไม่ถูกจับ
-
-> ใน VS Code ถ้าติดตั้ง extension GitHub Pull Requests การพิมพ์ `#` จะเด้งเมนู issue ขึ้นมา
-> ไม่ต้องใส่ `#` ก็ได้ ระบบอ่านเหมือนกัน
-
-### กฎการย้ายการ์ด
-
-- หาเฉพาะโปรเจคที่ `github_repo` ตรงกับ repo ที่ push เข้ามา — รหัสย่อซ้ำกันข้าม repo จึงไม่กวนกัน
-- งานที่สถานะ **เสร็จแล้ว** จะไม่ถูกดึงกลับ เพราะ commit ตามหลังการปิดงานเป็นเรื่องปกติ
-- รหัสที่ไม่ตรงกับการ์ดไหนเลยจะถูกเก็บใน `webhook_events.task_ref` เฉย ๆ ไม่ error
-
-### ทดสอบโดยไม่ต้องมี webhook จริง
-
-```bash
-curl -X POST http://localhost:8081/api/github/webhook \
-  -H "Content-Type: application/json" -H "X-GitHub-Event: push" \
-  -d '{"repository":{"full_name":"kongzell/kongzell-s-test"},
-       "commits":[{"message":"แก้ API KST-003","author":{"username":"kongzell"}}]}'
-```
-
-ตอบกลับเป็น `{"saved": 1, "moved": 1}` — `moved` คือจำนวนการ์ดที่ถูกย้าย
-
-## Deploy ขึ้นจริง (Render + Neon)
-
-ตอน deploy รวม frontend กับ API ไว้ที่ **service เดียว** ไม่แยกกัน
-
-เหตุผล: session cookie ตั้งเป็น `SameSite=Lax` ถ้าอยู่คนละโดเมนเบราว์เซอร์จะไม่ส่ง
-cookie ข้ามไป ล็อกอินจะไม่ติด การอยู่โดเมนเดียวยังทำให้ไม่ต้องตั้ง CORS และมี
-callback URL กับ webhook URL ที่เดียว
-
-```
-Render Web Service            Neon (Postgres)
-  Dockerfile (root)      ←──── DATABASE_URL
-   ├── FastAPI  /api/*
-   └── static   /
-```
-
-### 1. สร้างฐานข้อมูลที่ Neon
-
-สมัครที่ neon.tech แล้วคัดลอก connection string แบบ **pooled** มา
-
-```
-postgresql://user:pass@ep-xxx-pooler.region.aws.neon.tech/neondb?sslmode=require
-```
-
-วางมาทั้งเส้นได้เลย — `asyncpg` ไม่รู้จัก `?sslmode=` แต่ [app/db.py](backend/app/db.py)
-`build_connect_args()` ถอดออกให้เองแล้วแปลงเป็น SSL context ที่ถูกต้อง
-และถ้าเจอ host ที่มี `-pooler` จะปิด prepared statement cache ให้อัตโนมัติ
-(pgbouncer โหมด transaction ใช้ prepared statement ข้าม request ไม่ได้)
-
-### 2. สร้าง Web Service ที่ Render
-
-ใช้ [render.yaml](render.yaml) เป็น Blueprint หรือสร้างเองก็ได้ โดยตั้ง
-
-| ค่า | ใส่อะไร |
-| --- | --- |
-| Runtime | Docker |
-| Dockerfile Path | `./Dockerfile` (ของ root ไม่ใช่ใน backend/) |
-| Health Check Path | `/api/health` |
-
-### 3. ตัวแปรที่ต้องตั้ง
-
-| ตัวแปร | หมายเหตุ |
-| --- | --- |
-| `DATABASE_URL` | connection string จาก Neon |
-| `SESSION_SECRET` | **ต้องสุ่ม** — `render.yaml` ใช้ `generateValue: true` ให้แล้ว |
-| `TOKEN_SECRET` | ใช้เข้ารหัส `github_token` สุ่มเหมือนกัน |
-| `GITHUB_CLIENT_ID` / `GITHUB_CLIENT_SECRET` | จาก OAuth App |
-| `GITHUB_CALLBACK_URL` | `https://<โดเมน>/api/auth/github/callback` |
-| `GITHUB_WEBHOOK_SECRET` | สุ่มเอง แล้วเอาไปใส่ตอนสร้าง webhook |
-| `GEMINI_API_KEY` | จาก aistudio.google.com |
-| `CORS_ORIGIN` | `https://<โดเมน>` |
-| `AI_MOCK` / `AUTH_MOCK` | ต้องเป็น `false` |
-
-> ⚠️ ต้องแก้ **Authorization callback URL** ใน OAuth App บน GitHub ให้ตรงกับ
-> `GITHUB_CALLBACK_URL` เป๊ะ ๆ ไม่งั้นล็อกอินไม่ผ่าน
-
-### 4. ตั้ง webhook
-
-```
-repo > Settings > Webhooks > Add webhook
-  Payload URL:  https://<โดเมน>/api/github/webhook
-  Content type: application/json
-  Secret:       ค่าเดียวกับ GITHUB_WEBHOOK_SECRET
-  Events:       Pushes, Pull requests
-```
-
-### ทดสอบ image รวมในเครื่องก่อน deploy
-
-```bash
-docker build -t follow-up-allinone .
-docker compose up -d db
-docker run --rm --name allinone-test --network follow-up_default -p 3100:3000 \
-  -e DATABASE_URL="postgresql://followup:followup@db:5432/followup" \
-  -e SESSION_SECRET="local-test" -e TOKEN_SECRET="local-test" \
-  follow-up-allinone
-```
-
-เปิด http://localhost:3100 ต้องได้ทั้งหน้าเว็บและ `/api/*` จากพอร์ตเดียว
-
-### การเข้ารหัส token
-
-`members.github_token` เก็บเป็นค่าที่เข้ารหัสด้วย Fernet แล้ว (ขึ้นต้นด้วย `enc:`)
-อ่าน/เขียนผ่าน property `Member.token` เท่านั้น ซึ่งเข้ารหัส/ถอดรหัสให้อัตโนมัติ
-
-แถวเก่าที่เคยเก็บเป็น plaintext ยังอ่านได้ปกติ และจะถูกเขียนทับเป็นแบบเข้ารหัส
-เองตอนเจ้าของบัญชีล็อกอินรอบถัดไป
-
-> เปลี่ยน `TOKEN_SECRET` หลัง deploy = token เดิมถอดไม่ออก ผู้ใช้ต้องล็อกอินใหม่
-> (ระบบจะไม่ error แต่จะถือว่าไม่มี token)
-
-### ตรวจก่อน deploy
-
-แถบ **System Health** ฝั่งขวามีบรรทัด `Secrets` — ถ้าขึ้นแดงว่า
-*"ยังใช้ค่า dev — ห้าม deploy"* แปลว่า `SESSION_SECRET` ยังเป็นค่าเริ่มต้น
-
-## สิทธิ์การเข้าถึง
-
-ทุกคนมีบอร์ดของตัวเอง — ข้อมูลของแต่ละคนแยกกัน
-
-| กฎ | รายละเอียด |
-| --- | --- |
-| ต้องล็อกอินก่อน | ทุก endpoint ที่แตะข้อมูลตอบ `401` ถ้ายังไม่ได้ล็อกอิน ยกเว้น `/api/health`, `/api/system/health`, `/api/auth/status` (หน้าเว็บต้องใช้ตอนยังไม่ล็อกอิน) และ `/api/github/webhook` (GitHub เป็นคนยิงเข้ามา ตรวจด้วยลายเซ็น HMAC แทน) |
-| เห็นเฉพาะโปรเจคตัวเอง | `GET /api/projects` join กับ `project_members` แล้วกรองด้วย id ของคนที่ล็อกอิน |
-| คนสร้าง = เจ้าของ | `projects.owner_id` ถูกตั้งตอนสร้าง และคนสร้างถูกใส่เป็นสมาชิกไปด้วย ไม่งั้นจะมองไม่เห็นโปรเจคที่ตัวเองเพิ่งสร้าง |
-| เจ้าของเท่านั้น | ลบโปรเจค · เปลี่ยนชื่อ · เพิ่ม/เอาสมาชิกออก (เอาเจ้าของออกไม่ได้) |
-| สมาชิกทำได้ | สร้าง/แก้/ลบงาน · มอบหมายงาน · รับงาน · เรียก AI แตกงาน |
-| มอบหมายได้เฉพาะคนในโปรเจค | `PUT /api/tasks/{id}/assignees/{member_id}` ตอบ `400` ถ้าคนนั้นไม่ได้อยู่ในโปรเจค |
-
-**ทำไมคนนอกได้ `404` ไม่ใช่ `403`**
-
-`_get_project()` และ `_get_task()` ตอบ `404` เมื่อไม่ได้เป็นสมาชิก เพราะ `403`
-เท่ากับยืนยันให้คนนอกรู้ว่า id นั้นมีอยู่จริงในระบบ
-
-**เข้าโปรเจคอัตโนมัติตอนล็อกอิน (auto-join)**
-
-ทุกครั้งที่ล็อกอิน `auto_join_projects()` จะถาม GitHub ว่าบัญชีนี้มีสิทธิ์ push
-ใน repo ไหนบ้าง แล้วใส่เข้าโปรเจคที่ `github_repo` ตรงกันให้เลย
-คนที่ถูกเชิญเข้า repo จึงเห็นบอร์ดได้ตั้งแต่ล็อกอินครั้งแรก ไม่ต้องรอใครกดเพิ่ม
-
-| เคส | ผล |
-| --- | --- |
-| GitHub ล่ม / token หมดอายุ | ล็อกอินผ่านปกติ แค่ไม่ได้ auto-join |
-| อยู่ในโปรเจคนั้นแล้ว | ไม่เพิ่มซ้ำ |
-| ล็อกอินครั้งที่ 2, 3 | เรียกทุกครั้ง repo ที่เพิ่งถูกเชิญเข้าไปก็ได้ auto-join |
-| repo ที่แค่ fork หรือ watch | ไม่เข้า เพราะกรองด้วย `permissions.push` |
-
-เข้ามาในฐานะ **สมาชิก** เท่านั้น ความเป็นเจ้าของยังอยู่กับคนที่สร้างโปรเจค
-
-ปุ่ม **เพิ่มพนักงาน → ดึง collaborator** ยังมีอยู่ ใช้ตอนอยากดึงคนเข้ามาก่อน
-ที่เขาจะมาล็อกอินเอง
-
-## ดึงรายชื่อพนักงานจาก GitHub
-
-หน้าต่าง **เพิ่มพนักงาน** มีส่วน *ดึงรายชื่อจาก GitHub* เลือกได้ 2 ทาง
-
-| ทาง | ได้ใคร | ต้องมี |
-| --- | --- | --- |
-| **จาก repository** | collaborator ทุกคนของ repo — เห็นทันทีที่ถูกเชิญ ไม่ต้องรอ commit | repo ที่คุณมีสิทธิ์ push |
-| **จาก organization** | สมาชิกทั้งหมดของ org | GitHub Organization |
-
-```
-GET  /api/github/repos                              repo ที่มีสิทธิ์ push
-POST /api/github/import-collaborators?repo=owner/x  ดึง collaborator ของ repo
-```
-
-**เงื่อนไข**
-- ต้องล็อกอินด้วย **GitHub จริง** (ปุ่มทดสอบ `AUTH_MOCK` ใช้ไม่ได้ เพราะไม่มี access token)
-- scope ที่ขอคือ `read:user read:org repo` — ตัว `repo` จำเป็นสำหรับอ่าน collaborator
-  GitHub ไม่มี scope ที่แคบกว่านี้สำหรับ endpoint นั้น
-- **ถ้าเคย login ไว้ก่อนหน้านี้ ต้องออกจากระบบแล้วเข้าใหม่** เพราะ token เก่ายังไม่มีสิทธิ์ `repo`
-
-คนที่ดึงเข้ามาจะเข้าไปอยู่ใน **พนักงานใน workspace** ไม่ได้ใส่เข้าโปรเจคให้อัตโนมัติ —
-กด `+ เพิ่ม` เลือกเองว่าใครเข้าโปรเจคไหน และ**สายที่ถนัดตั้งเป็น `Member`** ให้เจ้าตัวมาเลือกเองทีหลัง
-
-> **เรื่องความปลอดภัย:** access token ของ GitHub ถูกเก็บใน `members.github_token` แบบ plaintext
-> พอจะขึ้น production ควรเข้ารหัสก่อนบันทึก
-
-## แถบด้านขวา
-
-| แผง | ข้อมูลมาจาก |
-| --- | --- |
-| Project Context & Stats | คำนวณจากงานในโปรเจคที่เปิดอยู่ |
-| ทีมในโปรเจค | รายชื่อ + **หลอดภาระงาน** ของแต่ละคน กดชื่อเพื่อดูว่ารับงานอะไรไปบ้าง |
-| GitHub Activity & Webhook Log | `GET /api/github/commits` + `GET /api/github/events` (ถามซ้ำทุก 30 วิ) |
-| System & Database Health | `GET /api/system/health` (ถามซ้ำทุก 20 วิ) |
-| งานของแต่ละคน | เลื่อนออกมาเมื่อกดชื่อคนในแผงทีม |
-
-### ต่อ GitHub Activity ให้มีข้อมูลจริง
-
-```
-GITHUB_REPO=owner/repo
-```
-
-ต้อง `git init` + push โปรเจคขึ้น GitHub ก่อน ไม่งั้นแผงจะขึ้นข้อความว่ายังไม่ได้ตั้งค่า
-
-### Webhook
-
-endpoint คือ `POST /api/github/webhook` ตรวจลายเซ็นด้วย `GITHUB_WEBHOOK_SECRET`
-อ่านรหัสงานรูปแบบ `TASK-001` จากข้อความ commit มาแสดงเป็นชิปในแผง
-
-> **บน localhost GitHub ยิงเข้ามาไม่ได้** ต้องมี public URL (ngrok / deploy จริง) ก่อน
-> ทดสอบเองได้ด้วยการ POST payload ตัวอย่างเข้า endpoint นี้ตรง ๆ
-
-## การวัดภาระงาน (workload)
-
-แต่ละคนมีหลอดแสดงภาระงาน คิดจาก**ความยากของงานที่ยังไม่เสร็จ**:
-
-| ความยาก | แต้ม |
-| --- | --- |
-| ง่าย (low) | 1 |
-| ปานกลาง (medium) | 3 |
-| ยาก (high) | 5 |
-| ไม่ได้ระบุ | 2 |
-
-- นับเฉพาะงานที่ **ยังไม่อยู่สถานะ "เสร็จแล้ว"** — เป็นภาระที่ยังแบกอยู่จริง
-- หลอดยาวเทียบกับ**คนที่งานหนักที่สุด** ในโปรเจค
-- สีหลอด: **แดง** = เกินส่วนแบ่งที่ควรได้เกิน 40% · **เขียว** = ต่ำกว่าส่วนแบ่ง 40% · **น้ำเงิน** = อยู่ในเกณฑ์
-- บรรทัดบนบอกว่า "แบ่งเท่ากันควรได้คนละกี่แต้ม" = แต้มรวม ÷ จำนวนคน
-
-กดชื่อคนในแผงจะเลื่อนแผงรายละเอียดออกมา แสดงงานที่รับผิดชอบแยกตามสถานะ
-พร้อมแต้มของแต่ละงาน กดที่งานเพื่อกระโดดไปดูรายละเอียดงานนั้นต่อได้
-
-## รายละเอียดงานบนการ์ด
-
-กดชื่องานบนการ์ดเพื่อกางรายละเอียดออกมา**ใต้การ์ดใบนั้น** แสดง
-
-- หมวดหมู่ · เวลาที่ประเมิน · ความยาก (พร้อมแต้มภาระงาน)
-- ทักษะที่ต้องใช้ (tag จาก AI)
-- **รายการงานย่อย** แต่ละข้อบอก **สถานะ** · หมวดหมู่ · ความยาก · เวลา · **ผู้รับผิดชอบ**
-  - ชิปสถานะด้านซ้ายกดเปลี่ยนได้ (รอเริ่ม / กำลังทำ / รอตรวจ / เสร็จแล้ว)
-  - ยังไม่มีคนรับจะขึ้นป้าย **"ยังไม่มีใครรับ"** เส้นประ กดเพื่อมอบหมายได้
-  - แถบ `งานย่อย 2/5` บนการ์ดแม่อัปเดตตามจำนวนที่เสร็จ
-
-### การจัดกลุ่มบนบอร์ด
-
-งานย่อยแสดงเป็นการ์ดในคอลัมน์ตาม**สถานะของตัวเอง** และถูกจัดกลุ่มด้วย**เส้นคั่นพร้อมชื่อกลุ่ม**
-
-```
-รอเริ่ม (3)
-  • อัปเดต README            ← งานเดี่ยว ไม่อยู่กลุ่มไหน แสดงบนสุด
-  ── ระบบตะกร้าสินค้า ─── 1/4
-  • เชื่อมต่อ UI เข้ากับ API
-  ── ระบบ login ───────── 0/2
-  • เขียน API ยืนยันตัวตน
-```
-
-- **งานที่มีงานย่อยจะไม่ขึ้นเป็นการ์ด** แต่กลายเป็นหัวข้อคั่นกลุ่มแทน
-- ตัวเลขท้ายเส้นคือความคืบหน้าของทั้งกลุ่ม (นับงานย่อยทุกคอลัมน์ ไม่ใช่เฉพาะคอลัมน์นั้น)
-- หัวข้อกลุ่มจะขึ้นเฉพาะคอลัมน์ที่มีงานของกลุ่มนั้นอยู่จริง
-
-การมอบหมายงานย่อยมีผลกับ **หลอดภาระงาน** ในแผงทีมทันที
-
-## การรับงานและการมอบหมาย
-
-**ปุ่ม "รับงาน"** ขึ้นบนการ์ดที่ยังไม่มีใครรับ (เห็นเฉพาะตอนล็อกอินแล้ว)
-กดแล้วระบบจะ
-
-1. เพิ่มคุณเข้าโปรเจคให้ถ้ายังไม่ได้เป็นสมาชิก
-2. มอบหมายงานนั้นให้คุณ
-3. **ย้ายการ์ดไป "กำลังทำ" ถ้างานยังอยู่ "รอเริ่ม"**
-
-การมอบหมายจากเมนูผู้รับผิดชอบ (owner สั่ง) ทำงานเหมือนกัน — งานที่ **"รอเริ่ม"** จะถูกย้ายไป
-**"กำลังทำ"** อัตโนมัติ
-
-> งานที่อยู่ **รอตรวจ / เสร็จแล้ว จะไม่ถูกย้าย** เพราะการเพิ่มคนตรงนั้นคือการหาคนมาตรวจ
-> ไม่ใช่การเริ่มทำใหม่ — ถ้าย้ายจะทำให้งานที่ตรวจอยู่เด้งกลับไปกำลังทำโดยไม่ตั้งใจ
