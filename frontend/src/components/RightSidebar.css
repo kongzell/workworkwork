@@ -382,3 +382,41 @@
 @media (max-width: 1180px) {
   .rs { display: none; }
 }
+
+/* ---------- ข้อเสนอจาก AI ว่า commit ตรงกับงานใบไหน ---------- */
+.rs-guess {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-top: 5px;
+  padding: 6px 8px;
+  border-left: 2px solid var(--border-strong);
+  border-radius: 0 6px 6px 0;
+  background: var(--bg-hover);
+}
+
+/* ความมั่นใจต่ำ = สีจางลง จะได้ไม่ดูน่าเชื่อถือเกินจริง */
+.rs-guess.is-high { border-left-color: var(--status-complete); }
+.rs-guess.is-medium { border-left-color: var(--prio-high); }
+.rs-guess.is-low { border-left-color: var(--text-faint); }
+
+.rs-guess-head { font-size: 11px; color: var(--text-dim); }
+.rs-guess-head strong { font-family: var(--mono); color: var(--text-strong); }
+.rs-guess-why { font-size: 10.5px; color: var(--text-faint); line-height: 1.4; }
+
+.rs-guess-apply {
+  align-self: flex-start;
+  margin-top: 2px;
+  padding: 2px 8px;
+  border: 1px solid var(--accent);
+  border-radius: 999px;
+  background: var(--accent-soft);
+  color: var(--accent-text);
+  font: inherit;
+  font-size: 10.5px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.rs-guess-apply:hover:not(:disabled) { background: var(--accent); color: var(--accent-ink); }
+.rs-guess-apply:disabled { opacity: 0.6; cursor: default; }

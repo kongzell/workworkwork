@@ -146,3 +146,90 @@ async def breakdown(title: str, context: str = "", count: int = 5) -> BreakdownR
         raise HTTPException(502, f"อ่านคำตอบจาก Gemini ไม่ได้: {exc}") from exc
 
     return BreakdownResult.model_validate({**data, "mock": False})
+
+
+# ---------- จับคู่ commit กับการ์ด ----------
+#
+# ใช้ตอนที่ commit ไม่ได้เขียนรหัสงานมา (ซึ่งเกิดบ่อยกว่าที่คิด)
+# ผลลัพธ์เป็นแค่ "ข้อเสนอ" ไม่ย้ายการ์ดเอง เพราะเดาผิดแล้วงานของคนอื่นขยับ
+# จะสร้างความสับสนมากกว่าประโยชน์ที่ได้
+
+#: 0 = ไม่ตรงกับงานไหนเลย — ใช้แทน null เพราะ responseSchema ไม่รองรับ nullable
+MATCH_SCHEMA = {
+    "type": "object",
+    "properties": {
+        "number": {"type": "integer"},
+        "confidence": {"type": "string", "enum": ["high", "medium", "low"]},
+        "reason": {"type": "string"},
+    },
+    "required": ["number", "confidence", "reason"],
+}
+
+MATCH_PROMPT = """คุณคือ tech lead ที่กำลังดูว่า commit ที่เพิ่งเข้ามาตรงกับงานใบไหนในบอร์ด
+
+ข้อความ commit: "{message}"
+
+รายการงานที่ยังไม่เสร็จในโปรเจคนี้:
+{tasks}
+
+ตอบว่า commit นี้น่าจะเป็นงานใบไหน ตามกติกา:
+
+1. number = เลขงานที่ตรงที่สุด ถ้าไม่มีใบไหนตรงเลยให้ตอบ 0
+2. ห้ามเดาสุ่ม — ถ้าข้อความ commit กว้างเกินไป เช่น "fix bug", "update", "แก้โค้ด"
+   หรือไม่เกี่ยวกับงานใบไหนเลย ให้ตอบ 0
+3. confidence:
+   high   = ข้อความพูดถึงสิ่งเดียวกับชื่องานชัดเจน
+   medium = เกี่ยวข้องกันแต่ไม่ได้ตรงคำต่อคำ
+   low    = พอเดาได้แต่ไม่มั่นใจ
+4. reason อธิบายสั้น ๆ ไม่เกิน 1 บรรทัด ว่าทำไมถึงเลือกใบนั้น (หรือทำไมถึงไม่ตรงกับใบไหน)
+   ตอบเป็นภาษาไทย"""
+
+
+async def match_commit(message: str, tasks: list[dict]) -> dict | None:
+    """เดาว่า commit ตรงกับงานใบไหน — คืน None เมื่อไม่มั่นใจหรือเรียกไม่สำเร็จ
+
+    tasks: [{"number": 3, "title": "...", "category": "Backend"}, ...]
+
+    ตั้งใจไม่ให้ error ออกไปข้างนอก เพราะฟังก์ชันนี้ถูกเรียกหลังตอบ webhook ไปแล้ว
+    ถ้า Gemini ล่มก็แค่ไม่มีข้อเสนอ ไม่ควรทำให้อะไรพัง
+    """
+    settings = get_settings()
+    if not settings.gemini_api_key or not tasks:
+        return None
+
+    listing = "\n".join(
+        f"- เลข {t['number']}: {t['title']}"
+        + (f"  [{t['category']}]" if t.get("category") else "")
+        for t in tasks
+    )
+    payload = {
+        "contents": [{"parts": [{"text": MATCH_PROMPT.format(message=message, tasks=listing)}]}],
+        "generationConfig": {
+            "responseMimeType": "application/json",
+            "responseSchema": MATCH_SCHEMA,
+            # งานนี้ต้องการความแม่น ไม่ต้องการความสร้างสรรค์
+            "temperature": 0.1,
+        },
+    }
+
+    try:
+        async with httpx.AsyncClient(timeout=120) as client:
+            res = await client.post(
+                ENDPOINT.format(model=settings.gemini_model),
+                json=payload,
+                headers={"x-goog-api-key": settings.gemini_api_key},
+            )
+        if res.status_code != 200:
+            return None
+        data = json.loads(res.json()["candidates"][0]["content"]["parts"][0]["text"])
+    except (httpx.HTTPError, KeyError, IndexError, ValueError):
+        return None
+
+    number = data.get("number") or 0
+    if number <= 0 or not any(t["number"] == number for t in tasks):
+        return None
+    return {
+        "number": number,
+        "confidence": data.get("confidence") or "low",
+        "reason": (data.get("reason") or "")[:300],
+    }

@@ -166,6 +166,12 @@ class WebhookEventOut(ApiModel):
     actor: str | None
     url: str | None
     task_ref: str | None
+    #: ข้อเสนอจาก AI ตอน commit ไม่ได้เขียนรหัสงานมา
+    suggested_task_id: str | None = None
+    suggested_task_key: str | None = None
+    suggested_task_title: str | None = None
+    suggest_confidence: str | None = None
+    suggest_reason: str | None = None
     received_at: datetime
 
 

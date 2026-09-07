@@ -9,21 +9,24 @@ import hmac
 import re
 
 import httpx
-from fastapi import APIRouter, Depends, Header, HTTPException, Request
+from fastapi import APIRouter, BackgroundTasks, Depends, Header, HTTPException, Request
 from sqlalchemy import desc, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app import ai
 from app.auth import require_member
 from app.config import get_settings
-from app.db import get_session
+from app.db import SessionLocal, get_session
 from app.models import Member, Project, Task, WebhookEvent
 from app.schemas import (
     CommitOut,
     GithubRepo,
     ImportResult,
     MemberOut,
+    TaskOut,
     WebhookEventOut,
 )
+from app.serialize import task_out
 
 router = APIRouter(prefix="/api/github", tags=["github"])
 
@@ -111,6 +114,58 @@ def _code_location(event: str, payload: dict) -> tuple[str | None, str | None]:
         return (None if branch == default else branch), pr.get("html_url")
 
     return None, None
+
+
+async def _suggest_matches(repo: str | None, event_ids: list[str]) -> None:
+    """ให้ AI เดาว่า commit ที่ไม่มีรหัสงาน ตรงกับงานใบไหน แล้วเก็บไว้เป็นข้อเสนอ
+
+    ทำงานหลังตอบ webhook ไปแล้ว เพราะ Gemini ใช้เวลาราว 15 วินาที ส่วน GitHub
+    รอแค่ 10 วินาทีก็ถือว่า timeout — ถ้ารอในนั้นจะขึ้นแดงทั้งที่ระบบทำงานปกติ
+
+    เปิด session ใหม่เอง เพราะ session ของ request ถูกปิดไปพร้อมกับ response แล้ว
+    """
+    if not repo or not event_ids:
+        return
+
+    async with SessionLocal() as session:
+        projects = list(
+            await session.scalars(select(Project).where(Project.github_repo == repo))
+        )
+        if not projects:
+            return
+
+        # เสนอเฉพาะงานที่ยังไม่ปิด — งานที่เสร็จแล้วไม่ควรถูกดึงกลับ
+        open_tasks = list(
+            await session.scalars(
+                select(Task).where(
+                    Task.project_id.in_([p.id for p in projects]),
+                    Task.status != "complete",
+                )
+            )
+        )
+        if not open_tasks:
+            return
+
+        by_number = {t.number: t for t in open_tasks}
+        candidates = [
+            {"number": t.number, "title": t.title, "category": t.category} for t in open_tasks
+        ]
+
+        for event_id in event_ids:
+            event = await session.get(WebhookEvent, event_id)
+            if event is None:
+                continue
+            guess = await ai.match_commit(event.summary, candidates)
+            if guess is None:
+                continue
+            task = by_number.get(guess["number"])
+            if task is None:
+                continue
+            event.suggested_task_id = task.id
+            event.suggest_confidence = guess["confidence"]
+            event.suggest_reason = guess["reason"]
+
+        await session.commit()
 
 
 def _target_status(event: str, payload: dict) -> str:
@@ -351,16 +406,89 @@ async def events(
     limit: int = 20,
     _me: Member = Depends(require_member),
     session: AsyncSession = Depends(get_session),
-) -> list[WebhookEvent]:
-    rows = await session.scalars(
-        select(WebhookEvent).order_by(desc(WebhookEvent.received_at)).limit(min(limit, 100))
+) -> list[WebhookEventOut]:
+    rows = list(
+        await session.scalars(
+            select(WebhookEvent).order_by(desc(WebhookEvent.received_at)).limit(min(limit, 100))
+        )
     )
-    return list(rows)
+
+    # เติมรหัสกับชื่อของงานที่ AI เสนอ ให้หน้าเว็บแสดงได้โดยไม่ต้องยิงถามซ้ำทีละใบ
+    wanted = {r.suggested_task_id for r in rows if r.suggested_task_id}
+    tasks: dict[str, tuple[str, str]] = {}
+    if wanted:
+        found = await session.scalars(
+            select(Task, Project)
+            .join(Project, Project.id == Task.project_id)
+            .where(Task.id.in_(wanted))
+        )
+        for task in found:
+            project = await session.get(Project, task.project_id)
+            key = f"{project.task_prefix}-{task.number:03d}" if project else str(task.number)
+            tasks[task.id] = (key, task.title)
+
+    out = []
+    for r in rows:
+        info = tasks.get(r.suggested_task_id or "")
+        out.append(
+            WebhookEventOut(
+                id=r.id,
+                event=r.event,
+                summary=r.summary,
+                actor=r.actor,
+                url=r.url,
+                task_ref=r.task_ref,
+                suggested_task_id=r.suggested_task_id if info else None,
+                suggested_task_key=info[0] if info else None,
+                suggested_task_title=info[1] if info else None,
+                suggest_confidence=r.suggest_confidence if info else None,
+                suggest_reason=r.suggest_reason if info else None,
+                received_at=r.received_at,
+            )
+        )
+    return out
+
+
+@router.post("/events/{event_id}/apply", response_model=TaskOut)
+async def apply_suggestion(
+    event_id: str,
+    me: Member = Depends(require_member),
+    session: AsyncSession = Depends(get_session),
+) -> TaskOut:
+    """ยืนยันข้อเสนอของ AI แล้วย้ายการ์ดไป "รอตรวจ"
+
+    เจ้าของโปรเจคเท่านั้น เพราะเป็นการเปลี่ยนสถานะงานของทีม
+    ลบข้อเสนอทิ้งหลังใช้ จะได้ไม่ค้างให้กดซ้ำ
+    """
+    event = await session.get(WebhookEvent, event_id)
+    if event is None or not event.suggested_task_id:
+        raise HTTPException(404, "ไม่พบข้อเสนอนี้ อาจถูกใช้ไปแล้ว")
+
+    task = await session.get(Task, event.suggested_task_id)
+    if task is None:
+        raise HTTPException(404, "งานที่เสนอไว้ถูกลบไปแล้ว")
+
+    project = await session.get(Project, task.project_id)
+    if project is None or project.owner_id != me.id:
+        raise HTTPException(403, "เฉพาะเจ้าของโปรเจคเท่านั้นที่ยืนยันข้อเสนอได้")
+
+    if task.status != "complete":
+        task.status = "review"
+
+    event.suggested_task_id = None
+    event.suggest_confidence = None
+    event.suggest_reason = None
+    event.task_ref = f"{project.task_prefix}-{task.number:03d}"
+
+    await session.commit()
+    await session.refresh(task)
+    return task_out(task)
 
 
 @router.post("/webhook", status_code=202)
 async def webhook(
     request: Request,
+    background: BackgroundTasks,
     x_github_event: str = Header(default="ping"),
     x_hub_signature_256: str | None = Header(default=None),
     session: AsyncSession = Depends(get_session),
@@ -390,6 +518,12 @@ async def webhook(
     status = _target_status(x_github_event, payload)
     branch, review_url = _code_location(x_github_event, payload)
     moved = await _advance_referenced_tasks(session, repo, refs, status, branch, review_url)
+
+    # commit ที่ลืมใส่รหัสงาน ให้ AI เดาให้ทีหลัง แล้วเก็บไว้รอคนยืนยัน
+    unmatched = [e.id for e, (*_, ref) in zip(saved, rows, strict=True) if not ref]
+    if unmatched:
+        background.add_task(_suggest_matches, repo, unmatched)
+
     return {"saved": len(saved), "moved": moved, "status": status}
 
 

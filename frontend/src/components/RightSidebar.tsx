@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react"
 import type { Commit, SystemHealth, WebhookEvent } from "../api"
-import { getCommits, getSystemHealth, getWebhookEvents } from "../api"
+import { applySuggestion, getCommits, getSystemHealth, getWebhookEvents } from "../api"
 import type { Member, Project, Task } from "../types"
 import { openTasksOf, STATUSES, taskPoints } from "../types"
 import { Avatar } from "./Avatar"
@@ -37,7 +37,7 @@ export function RightSidebar({
           isOwner={isOwner}
         />
       )}
-      <GithubActivity onOpenTaskRef={onOpenTaskRef} />
+      <GithubActivity onOpenTaskRef={onOpenTaskRef} isOwner={isOwner} />
       <HealthBar />
     </aside>
   )
@@ -238,17 +238,45 @@ type FeedRow = {
   text: string
   who: string | null
   ref: string | null
+  /** ข้อเสนอจาก AI — มีเฉพาะแถวที่มาจาก webhook และ commit ไม่ได้เขียนรหัสงาน */
+  suggest: {
+    eventId: string
+    key: string
+    title: string
+    confidence: "high" | "medium" | "low"
+    reason: string | null
+  } | null
 }
 
 /** โควตา GitHub แบบไม่ล็อกอินคือ 60 ครั้ง/ชม. ถามทุก 5 นาที = 12 ครั้ง/ชม. */
 const POLL_MS = 5 * 60 * 1000
 
-function GithubActivity({ onOpenTaskRef }: { onOpenTaskRef: (ref: string) => void }) {
+function GithubActivity({
+  onOpenTaskRef,
+  isOwner,
+}: {
+  onOpenTaskRef: (ref: string) => void
+  isOwner: boolean
+}) {
   const [commits, setCommits] = useState<Commit[]>([])
   const [events, setEvents] = useState<WebhookEvent[]>([])
   const [note, setNote] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
   const [tick, setTick] = useState(0)
+  const [applying, setApplying] = useState<string | null>(null)
+
+  /** ยืนยันข้อเสนอ แล้วโหลด feed ใหม่เพื่อให้ข้อเสนอที่ใช้ไปแล้วหายออก */
+  const apply = async (eventId: string) => {
+    setApplying(eventId)
+    try {
+      await applySuggestion(eventId)
+      setTick((t) => t + 1)
+    } catch (e) {
+      setNote(e instanceof Error ? e.message : "ย้ายการ์ดไม่สำเร็จ")
+    } finally {
+      setApplying(null)
+    }
+  }
 
   useEffect(() => {
     let alive = true
@@ -292,6 +320,16 @@ function GithubActivity({ onOpenTaskRef }: { onOpenTaskRef: (ref: string) => voi
       text: e.summary,
       who: e.actor,
       ref: e.taskRef,
+      suggest:
+        e.suggestedTaskId && e.suggestedTaskKey
+          ? {
+              eventId: e.id,
+              key: e.suggestedTaskKey,
+              title: e.suggestedTaskTitle ?? "",
+              confidence: e.suggestConfidence ?? "low",
+              reason: e.suggestReason,
+            }
+          : null,
     })),
     ...commits.map((c) => ({
       key: c.sha,
@@ -299,6 +337,7 @@ function GithubActivity({ onOpenTaskRef }: { onOpenTaskRef: (ref: string) => voi
       text: c.message,
       who: c.author,
       ref: c.taskRef,
+      suggest: null,
     })),
   ]
 
@@ -333,6 +372,25 @@ function GithubActivity({ onOpenTaskRef }: { onOpenTaskRef: (ref: string) => voi
                   </button>
                 )}
               </span>
+
+              {r.suggest && (
+                <div className={`rs-guess is-${r.suggest.confidence}`}>
+                  <span className="rs-guess-head">
+                    AI เดาว่าเป็น <strong>{r.suggest.key}</strong> {r.suggest.title}
+                  </span>
+                  {r.suggest.reason && <span className="rs-guess-why">{r.suggest.reason}</span>}
+                  {isOwner && (
+                    <button
+                      type="button"
+                      className="rs-guess-apply"
+                      disabled={applying === r.suggest.eventId}
+                      onClick={() => void apply(r.suggest!.eventId)}
+                    >
+                      {applying === r.suggest.eventId ? "กำลังย้าย..." : "ย้ายไปรอตรวจ"}
+                    </button>
+                  )}
+                </div>
+              )}
             </div>
           </li>
         ))}

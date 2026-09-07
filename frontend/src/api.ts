@@ -337,7 +337,19 @@ export type WebhookEvent = {
   actor: string | null
   url: string | null
   taskRef: string | null
+  /** งานที่ AI เดาว่า commit นี้หมายถึง — มีค่าเมื่อ commit ไม่ได้เขียนรหัสมา */
+  suggestedTaskId: string | null
+  suggestedTaskKey: string | null
+  suggestedTaskTitle: string | null
+  suggestConfidence: "high" | "medium" | "low" | null
+  suggestReason: string | null
   receivedAt: string
+}
+
+/** ยืนยันข้อเสนอของ AI แล้วย้ายการ์ดไป "รอตรวจ" — เจ้าของโปรเจคเท่านั้น */
+export async function applySuggestion(eventId: string): Promise<void> {
+  const res = await fetch(`/api/github/events/${eventId}/apply`, { method: "POST" })
+  if (!res.ok) throw new ApiError(await readError(res), res.status)
 }
 
 export async function getCommits(limit = 8): Promise<Commit[]> {

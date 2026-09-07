@@ -171,4 +171,13 @@ class WebhookEvent(Base):
     url: Mapped[str | None] = mapped_column(Text, nullable=True)
     #: รหัสงานที่อ่านได้จากข้อความ commit เช่น TASK-001
     task_ref: Mapped[str | None] = mapped_column(String(40), nullable=True)
+
+    #: งานที่ AI เดาว่า commit นี้น่าจะหมายถึง — ใช้ตอนที่ commit ไม่ได้เขียนรหัสมา
+    #: เป็นแค่ข้อเสนอ ต้องมีคนกดยืนยันถึงจะย้ายการ์ด
+    suggested_task_id: Mapped[str | None] = mapped_column(
+        String(36), ForeignKey("tasks.id", ondelete="SET NULL"), nullable=True
+    )
+    suggest_confidence: Mapped[str | None] = mapped_column(String(10), nullable=True)
+    suggest_reason: Mapped[str | None] = mapped_column(Text, nullable=True)
+
     received_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now)
