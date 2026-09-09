@@ -153,6 +153,19 @@ async def remove_member(
             project_members.c.member_id == member_id,
         )
     )
+
+    # งานที่เคยเป็นของเขาและตอนนี้ไม่เหลือใครถือ ให้กลับไปรอเริ่ม
+    # ไม่งั้นจะค้างอยู่คอลัมน์กำลังทำทั้งที่ไม่มีคนทำแล้ว
+    orphaned = await session.scalars(
+        select(Task).where(
+            Task.project_id == project_id,
+            Task.status == "in-progress",
+            ~Task.id.in_(select(task_assignees.c.task_id)),
+        )
+    )
+    for task in orphaned:
+        task.status = "todo"
+
     await session.commit()
 
 

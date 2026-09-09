@@ -32,6 +32,27 @@ async def _task_with_project(
     return task, project
 
 
+async def _park_if_unclaimed(session: AsyncSession, task: Task) -> None:
+    """งานที่ไม่มีใครถืออยู่แล้ว ให้กลับไปคอลัมน์ "รอเริ่ม"
+
+    เป็นขากลับของกฎ "รับงานแล้วย้ายไปกำลังทำ" ไม่งั้นจะเหลือการ์ดค้างอยู่
+    คอลัมน์กำลังทำโดยไม่มีใครทำ ซึ่งอ่านบอร์ดแล้วเข้าใจผิด
+
+    ไม่แตะงานที่ส่งตรวจหรือปิดไปแล้ว เพราะงานถูกทำไปจริง
+    """
+    if task.assignees or task.status != "in-progress":
+        return
+
+    task.status = "todo"
+    # ต่อท้ายคอลัมน์ปลายทาง เหมือนตอนย้ายด้วยวิธีอื่น
+    last = await session.scalar(
+        select(func.max(Task.position)).where(
+            Task.project_id == task.project_id, Task.status == "todo"
+        )
+    )
+    task.position = (last or 0.0) + 1000.0
+
+
 @router.patch("/{task_id}", response_model=TaskOut)
 async def update_task(
     task_id: str,
@@ -131,6 +152,7 @@ async def unassign(
         raise HTTPException(403, "เฉพาะเจ้าของโปรเจคเท่านั้นที่ถอดคนอื่นออกจากงานได้")
 
     task.assignees = [m for m in task.assignees if m.id != member_id]
+    await _park_if_unclaimed(session, task)
     await session.commit()
     await session.refresh(task)
     return task_out(task)
