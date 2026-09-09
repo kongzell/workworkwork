@@ -115,20 +115,20 @@ export function AddMemberModal({
           {githubRepo && <GithubImport repo={githubRepo} onImported={onImported} />}
 
           <section className="modal-section">
-            <h3 className="modal-h3">เพิ่มพนักงานใหม่</h3>
+            <h3 className="modal-h3">Add member</h3>
             <div className="field-grid">
               <label className="field">
-                <span className="field-label">ชื่อ</span>
+                <span className="field-label">Name</span>
                 <input
                   className="field-input"
-                  placeholder="เช่น สมชาย ใจดี"
+                  placeholder="Username"
                   value={name}
                   onChange={(e) => { setName(e.target.value); setError(null) }}
                   onKeyDown={(e) => e.key === "Enter" && submit()}
                 />
               </label>
               <label className="field">
-                <span className="field-label">ถนัดสายไหน</span>
+                <span className="field-label">Specialization</span>
                 <select
                   className="field-input"
                   value={role}
@@ -142,7 +142,7 @@ export function AddMemberModal({
             </div>
 
             <div className="field">
-              <span className="field-label">สี avatar</span>
+              <span className="field-label">Avatar Color</span>
               <div className="color-row">
                 {MEMBER_COLORS.map((c) => (
                   <button
@@ -190,7 +190,7 @@ function GithubImport({ repo, onImported }: { repo: string; onImported: () => vo
       setMessage(`เพิ่มใหม่ ${result.created} คน, อัปเดต ${result.updated} คน${pendingNote}`)
       onImported()
     } catch (e) {
-      setError(e instanceof Error ? e.message : "ดึงรายชื่อไม่สำเร็จ")
+      setError(e instanceof Error ? e.message : "Failed to fetch member list")
     } finally {
       setBusy(false)
     }

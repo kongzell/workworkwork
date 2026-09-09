@@ -4,7 +4,7 @@ import { PRIORITIES } from "../types"
 import { Avatar } from "./Avatar"
 import { Menu, MenuItem, MenuLabel } from "./Menu"
 import {
-  IconCheck, IconChevronLeft, IconFilter, IconPlus, IconSearch, IconStar, IconTaskList, IconUsers,
+  IconCheck, IconChevronLeft, IconFilter, IconPlus, IconStar, IconTaskList, IconUsers,
 } from "./Icons"
 import "./Sidebar.css"
 
@@ -17,30 +17,21 @@ type Props = {
   onChangeFilters: (f: Filters) => void
   onSelectProject: (id: string) => void
   onOpenAddProject: () => void
-  onAddMember: () => void
-  /** เจ้าของโปรเจคเท่านั้นที่จัดการสมาชิกได้ */
-  isOwner: boolean
-  onFocusSearch: () => void
   onCollapse: () => void
 }
 
 export function Sidebar({
   projects, activeProjectId, starredIds, members, filters, onChangeFilters,
-  onSelectProject, onOpenAddProject, onAddMember, isOwner, onFocusSearch, onCollapse,
+  onSelectProject, onOpenAddProject, onCollapse,
 }: Props) {
   const filterOn = filters.assigneeId !== null || filters.priority !== null
 
   return (
     <aside className="sidebar">
-      <div className="sb-top">
-        <span className="sb-brand">Follow-up</span>
+      <div className="sb-top">  
         <div className="sb-top-actions">
-          <button type="button" className="sb-icon-btn" title="ค้นหางาน" onClick={onFocusSearch}>
-            <IconSearch size={15} />
-          </button>
-
           <Menu
-            align="left"
+            align="right"
             title="กรองงาน"
             trigger={() => (
               <span className={`sb-icon-btn${filterOn ? " is-on" : ""}`}>
@@ -109,25 +100,6 @@ export function Sidebar({
           </button>
         </div>
       </div>
-
-      <Menu
-        align="left"
-        title="สร้างใหม่"
-        trigger={() => <span className="sb-create"><IconPlus size={14} /> Create</span>}
-      >
-        {(close) => (
-          <>
-            <MenuItem onClick={() => { onOpenAddProject(); close() }}>
-              <IconTaskList size={14} /> โปรเจคใหม่
-            </MenuItem>
-            {isOwner && (
-              <MenuItem onClick={() => { onAddMember(); close() }}>
-                <IconUsers size={14} /> พนักงานใหม่
-              </MenuItem>
-            )}
-          </>
-        )}
-      </Menu>
 
       <section className="sb-section">
         <div className="sb-space">

@@ -23,19 +23,19 @@
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  font-size: 14.5px;
+  font-size: 15.5px;
   color: var(--text);
   white-space: nowrap;
 }
 
 .tb-crumb-current {
-  font-size: 17px;
+  font-size: 18px;
   font-weight: 700;
   color: var(--text-strong);
 }
 .tb-crumb-list { color: var(--text-dim); }
 .tb-sep { color: var(--text-faint); }
-.tb-crumb-dim { color: var(--text-faint); font-size: 14.5px; white-space: nowrap; }
+.tb-crumb-dim { color: var(--text-faint); font-size: 15.5px; white-space: nowrap; }
 
 .tb-crumb-badge {
   display: inline-flex;
@@ -50,7 +50,7 @@
 
 .tb-count {
   font-family: var(--mono);
-  font-size: 13.5px;
+  font-size: 14.5px;
   font-variant-numeric: tabular-nums;
   color: var(--text-faint);
   white-space: nowrap;
@@ -75,7 +75,7 @@
   background: none;
   color: var(--text-strong);
   font: inherit;
-  font-size: 13px;
+  font-size: 14px;
   outline: none;
 }
 
@@ -107,7 +107,7 @@
   background: var(--bg-card);
   color: var(--text-strong);
   font: inherit;
-  font-size: 15px;
+  font-size: 16px;
   font-weight: 700;
   outline: none;
   min-width: 180px;
@@ -121,7 +121,7 @@
   border: 1px solid var(--border-strong);
   border-radius: 7px;
   color: var(--text);
-  font-size: 13px;
+  font-size: 14px;
   white-space: nowrap;
 }
 
@@ -137,7 +137,7 @@
   background: var(--bg-card);
   color: var(--text-strong);
   font: inherit;
-  font-size: 12.5px;
+  font-size: 13.5px;
   font-weight: 600;
   text-decoration: none;
   cursor: pointer;
@@ -155,7 +155,7 @@
   padding: 6px 11px;
   border: 1px solid var(--border-strong);
   border-radius: 7px;
-  font-size: 12.5px;
+  font-size: 13.5px;
   color: var(--text);
   white-space: nowrap;
 }

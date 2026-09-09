@@ -63,12 +63,12 @@ export function AiBreakdownModal({ projectName, onClose, onAdd }: Props) {
         className="modal modal-wide"
         role="dialog"
         aria-modal="true"
-        aria-label="แตกงานด้วย AI"
+        aria-label="กระจายงานด้วย AI"
         onMouseDown={(e) => e.stopPropagation()}
       >
         <header className="modal-head">
           <div>
-            <h2 className="modal-title"><IconSparkle size={16} /> แตกงานด้วย AI</h2>
+            <h2 className="modal-title"><IconSparkle size={16} /> กระจายงานด้วย AI</h2>
             <p className="modal-sub">{projectName}</p>
           </div>
           <button type="button" className="modal-close" onClick={onClose} title="ปิด">
@@ -78,7 +78,7 @@ export function AiBreakdownModal({ projectName, onClose, onAdd }: Props) {
 
         <div className="modal-body">
           <div className="field">
-            <span className="field-label">หัวข้องานกว้าง ๆ</span>
+            <span className="field-label">หัวข้องาน</span>
             <input
               autoFocus
               className="field-input"
@@ -102,7 +102,7 @@ export function AiBreakdownModal({ projectName, onClose, onAdd }: Props) {
 
           <div className="ai-run">
             <button type="button" className="btn btn-primary" onClick={run} disabled={loading}>
-              {loading ? "กำลังคิด..." : <><IconSparkle size={14} /> แตกงาน</>}
+              {loading ? "กำลังคิด..." : <><IconSparkle size={14} /> กระจายงาน</>}
             </button>
           </div>
 

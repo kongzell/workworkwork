@@ -8,6 +8,7 @@ import { createMemberApi, getAuthStatus, getMembers, logout, updateMyRole } from
 import { AddMemberModal } from "./components/AddMemberModal"
 import { AddProjectModal } from "./components/AddProjectModal"
 import { AiBreakdownModal } from "./components/AiBreakdownModal"
+import type { TaskDraft } from "./components/Board"
 import { Board } from "./components/Board"
 import { MemberDetailPanel, RightSidebar } from "./components/RightSidebar"
 import { Sidebar } from "./components/Sidebar"
@@ -123,9 +124,9 @@ export default function App() {
 
   const selectedMember = projectMembers.find((m) => m.id === selectedMemberId) ?? null
 
-  const addTask = (status: StatusId, title: string) => {
+  const addTask = (status: StatusId, draft: TaskDraft) => {
     if (!project) return
-    void sync(() => api.createTask(project.id, { title, status }))
+    void sync(() => api.createTask(project.id, { ...draft, status }))
   }
 
   /**
@@ -255,10 +256,7 @@ export default function App() {
           onChangeFilters={setFilters}
           onSelectProject={setActiveProjectId}
           onOpenAddProject={() => setProjectModalOpen(true)}
-          onAddMember={() => setMemberModalOpen(true)}
-          onFocusSearch={() => searchRef.current?.focus()}
           onCollapse={() => setCollapsed(true)}
-          isOwner={isOwner}
         />
       )}
 

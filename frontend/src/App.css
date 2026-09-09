@@ -26,7 +26,7 @@
   border-radius: 9px;
   background: var(--bg-pop);
   color: var(--danger);
-  font-size: 12.5px;
+  font-size: 13.5px;
   box-shadow: var(--shadow);
 }
 
@@ -43,12 +43,12 @@
 
 .empty-projects h2 {
   margin: 0;
-  font-size: 18px;
+  font-size: 19px;
   font-weight: 700;
   color: var(--text-strong);
 }
 
-.empty-projects p { margin: 0 0 10px; font-size: 13.5px; color: var(--text-dim); }
+.empty-projects p { margin: 0 0 10px; font-size: 14.5px; color: var(--text-dim); }
 
 .empty-form { display: flex; gap: 8px; }
 .empty-form .field-input { width: 220px; }

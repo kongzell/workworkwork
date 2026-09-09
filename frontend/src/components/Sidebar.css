@@ -18,15 +18,6 @@
   padding: 4px 4px 10px;
 }
 
-.sb-brand {
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-  font-size: 16px;
-  font-weight: 600;
-  color: var(--text-strong);
-}
-
 .sb-top-actions {
   display: flex;
   align-items: center;
@@ -58,29 +49,6 @@
 .sb-star svg,
 .sb-star { fill: currentColor; }
 
-.sb-create {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 5px;
-  margin: 0 4px 6px;
-  padding: 7px 11px;
-  border: 1px solid var(--border-strong);
-  border-radius: 8px;
-  background: var(--bg-card);
-  color: var(--text-strong);
-  font-size: 13px;
-  font-weight: 600;
-  cursor: pointer;
-  width: calc(100% - 8px);
-}
-
-.sb-create:hover { background: var(--bg-hover); }
-
-/* ปุ่ม Create เป็น trigger ของเมนู — ให้ตัว wrapper กว้างเต็มแถบ */
-.sidebar > .menu-wrap { display: block; }
-.sidebar > .menu-wrap > .menu-trigger { width: 100%; }
-
 .sb-row {
   display: flex;
   align-items: center;
@@ -92,7 +60,7 @@
   background: none;
   color: var(--text);
   font: inherit;
-  font-size: 13.5px;
+  font-size: 14.5px;
   text-align: left;
   cursor: pointer;
   white-space: nowrap;
@@ -122,7 +90,7 @@
 
 .sb-child-name { overflow: hidden; text-overflow: ellipsis; }
 
-.sb-count { margin-left: auto; padding-left: 8px; color: var(--text-faint); font-size: 12px; }
+.sb-count { margin-left: auto; padding-left: 8px; color: var(--text-faint); font-size: 13px; }
 .sb-row.is-active .sb-count { color: var(--text); }
 
 .sb-row-end { margin-left: auto; }
@@ -130,3 +98,9 @@
 .sb-add { color: var(--text-faint); }
 
 .sb-glyph-list { color: #8b8b8b; }
+
+/* แถบข้างตั้ง overflow-x: hidden ไว้กันชื่อโปรเจคยาวดันแถบ
+   เมนูที่กางออกมาจึงต้องไม่กว้างเกินแถบ ไม่งั้นจะโดนตัดจนอ่านไม่ออก */
+.sidebar .menu-pop {
+  max-width: 230px;
+}

@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react"
 import type { Filters } from "../App"
-import type { Member, PriorityId, Project, StatusId, Task } from "../types"
-import { CATEGORIES, categoryColor, STATUSES } from "../types"
+import type { Complexity, Member, PriorityId, Project, StatusId, Task } from "../types"
+import { CATEGORIES, categoryColor, COMPLEXITIES, STATUSES } from "../types"
 import { TaskCard } from "./TaskCard"
 import { IconPlus } from "./Icons"
 import "./Board.css"
@@ -20,7 +20,7 @@ type Props = {
   onClaimTask: (taskId: string) => void
   onOpenTask: (id: string) => void
   onSetSubtaskStatus: (id: string, status: StatusId) => void
-  onAddTask: (status: StatusId, title: string) => void
+  onAddTask: (status: StatusId, draft: TaskDraft) => void
   onChangeStatus: (taskId: string, status: StatusId) => void
   onToggleAssignee: (taskId: string, memberId: string) => void
   onSetPriority: (taskId: string, priority: PriorityId) => void
@@ -163,7 +163,12 @@ export function Board({
                 )
               })}
 
-              {isOwner && <NewTask onSubmit={(title) => onAddTask(col.addStatus, title)} />}
+              {/* งานใหม่เริ่มที่ "รอเริ่ม" เสมอ ไม่ควรสร้างงานเข้ากลางกระบวนการโดยตรง
+                  โหมดจัดกลุ่มตามหมวดหมู่ไม่มีคอลัมน์รอเริ่ม จึงไม่มีปุ่มเลย —
+                  สลับกลับไปดูตามสถานะก่อนถึงจะเพิ่มงานได้ */}
+              {isOwner && groupBy === "status" && col.addStatus === "todo" && (
+                <NewTask onSubmit={(draft) => onAddTask(col.addStatus, draft)} />
+              )}
             </section>
           )
         })}
@@ -172,15 +177,47 @@ export function Board({
   )
 }
 
-function NewTask({ onSubmit }: { onSubmit: (title: string) => void }) {
+/** ร่างงานที่กรอกจากฟอร์ม — ฟิลด์ที่ไม่ได้กรอกส่งเป็น null ให้เหมือนงานที่ยังไม่ประเมิน */
+export type TaskDraft = {
+  title: string
+  category: string | null
+  tags: string[]
+  estimateHours: number | null
+  complexity: Complexity | null
+}
+
+function NewTask({ onSubmit }: { onSubmit: (draft: TaskDraft) => void }) {
   const [editing, setEditing] = useState(false)
   const [title, setTitle] = useState("")
+  const [category, setCategory] = useState<string | null>(null)
+  const [complexity, setComplexity] = useState<Complexity | null>(null)
+  const [hours, setHours] = useState("")
+  const [tagText, setTagText] = useState("")
+
+  const reset = () => {
+    setTitle("")
+    setCategory(null)
+    setComplexity(null)
+    setHours("")
+    setTagText("")
+    setEditing(false)
+  }
 
   const commit = () => {
     const t = title.trim()
-    if (t) onSubmit(t)
-    setTitle("")
-    setEditing(false)
+    if (!t) {
+      reset()
+      return
+    }
+    onSubmit({
+      title: t,
+      category,
+      // คั่นด้วยจุลภาคหรือช่องว่างก็ได้ ไม่ต้องจำว่าต้องใช้อันไหน
+      tags: tagText.split(/[,\s]+/).map((x) => x.trim()).filter(Boolean),
+      estimateHours: hours.trim() ? Number(hours) : null,
+      complexity,
+    })
+    reset()
   }
 
   if (!editing) {
@@ -192,17 +229,70 @@ function NewTask({ onSubmit }: { onSubmit: (title: string) => void }) {
   }
 
   return (
-    <input
-      autoFocus
-      className="new-task-input"
-      placeholder="ชื่องาน แล้วกด Enter"
-      value={title}
-      onChange={(e) => setTitle(e.target.value)}
-      onBlur={commit}
-      onKeyDown={(e) => {
-        if (e.key === "Enter") commit()
-        if (e.key === "Escape") { setTitle(""); setEditing(false) }
-      }}
-    />
+    <div className="nt-form">
+      <input
+        autoFocus
+        className="nt-title"
+        placeholder="ชื่องาน"
+        value={title}
+        onChange={(e) => setTitle(e.target.value)}
+        onKeyDown={(e) => {
+          if (e.key === "Enter") commit()
+          if (e.key === "Escape") reset()
+        }}
+      />
+
+      <div className="nt-row">
+        <select
+          className="nt-select"
+          value={category ?? ""}
+          onChange={(e) => setCategory(e.target.value || null)}
+        >
+          <option value="">หมวดหมู่</option>
+          {CATEGORIES.map((c) => (
+            <option key={c.id} value={c.id}>{c.id}</option>
+          ))}
+        </select>
+
+        <select
+          className="nt-select"
+          value={complexity ?? ""}
+          onChange={(e) => setComplexity((e.target.value || null) as Complexity | null)}
+        >
+          <option value="">ความยาก</option>
+          {COMPLEXITIES.map((c) => (
+            <option key={c.id} value={c.id}>{c.label}</option>
+          ))}
+        </select>
+
+        <input
+          className="nt-hours"
+          type="number"
+          min="0"
+          step="0.5"
+          placeholder="ชม."
+          value={hours}
+          onChange={(e) => setHours(e.target.value)}
+        />
+      </div>
+
+      <input
+        className="nt-tags"
+        placeholder="ทักษะที่ต้องใช้ เช่น React, PostgreSQL"
+        value={tagText}
+        onChange={(e) => setTagText(e.target.value)}
+        onKeyDown={(e) => {
+          if (e.key === "Enter") commit()
+          if (e.key === "Escape") reset()
+        }}
+      />
+
+      <div className="nt-actions">
+        <button type="button" className="nt-cancel" onClick={reset}>ยกเลิก</button>
+        <button type="button" className="nt-save" disabled={!title.trim()} onClick={commit}>
+          เพิ่มงาน
+        </button>
+      </div>
+    </div>
   )
 }
