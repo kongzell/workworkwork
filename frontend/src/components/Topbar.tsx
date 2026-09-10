@@ -48,7 +48,7 @@ export function Topbar({
     <header className="topbar">
       <div className="tb-row">
         {collapsed && (
-          <button type="button" className="tb-icon-btn" title="กางแถบข้าง" onClick={onExpand}>
+          <button type="button" className="tb-icon-btn" title="Expand sidebar" onClick={onExpand}>
             <IconChevronRight size={16} />
           </button>
         )}
@@ -58,7 +58,7 @@ export function Topbar({
             <span className="tb-crumb-badge"><IconUsers size={11} /></span> Team Projects
           </span>
           {project === null ? (
-            <span className="tb-crumb-dim">ยังไม่ได้เลือกโปรเจค</span>
+            <span className="tb-crumb-dim">No project selected</span>
           ) : (
             <>
           <span className="tb-sep">/</span>
@@ -75,7 +75,7 @@ export function Topbar({
           ) : (
             <Menu
               align="left"
-              title="เมนูโปรเจค"
+              title="Project menu"
               trigger={() => (
                 <span className="tb-crumb tb-crumb-current">
                   <IconTaskList size={14} className="tb-crumb-list" /> {project?.name}
@@ -85,7 +85,7 @@ export function Topbar({
             >
               {(close) => (
                 <>
-                  <MenuLabel>สลับโปรเจค</MenuLabel>
+                  <MenuLabel>Switch project</MenuLabel>
                   {projects.map((p) => (
                     <MenuItem
                       key={p.id}
@@ -98,13 +98,13 @@ export function Topbar({
                     </MenuItem>
                   ))}
 
-                  <MenuLabel>จัดการ</MenuLabel>
+                  <MenuLabel>Manage</MenuLabel>
                   <MenuItem onClick={() => { setRenaming(true); close() }}>
-                    <IconPencil size={14} /> เปลี่ยนชื่อโปรเจค
+                    <IconPencil size={14} /> Rename project
                   </MenuItem>
                   {canDelete && (
                     <MenuItem danger onClick={() => { onDeleteProject(); close() }}>
-                      <IconTrash size={14} /> ลบโปรเจคนี้
+                      <IconTrash size={14} /> Delete project
                     </MenuItem>
                   )}
                 </>
@@ -112,12 +112,12 @@ export function Topbar({
             </Menu>
           )}
 
-          <span className="tb-count">{taskCount} งาน</span>
+          <span className="tb-count">{taskCount} tasks</span>
 
           <button
             type="button"
             className={`tb-icon-btn tb-star${starred ? " is-on" : ""}`}
-            title={starred ? "เอาดาวออก" : "ติดดาวโปรเจคนี้"}
+            title={starred ? "Remove star" : "Star this project"}
             aria-pressed={starred}
             onClick={onToggleStar}
           >
@@ -132,30 +132,30 @@ export function Topbar({
             <>
           <Menu
             align="right"
-            title="จัดกลุ่มคอลัมน์"
+            title="Group columns"
             trigger={() => (
               <span className="tb-group">
                 <IconLayers size={14} />
-                {groupBy === "status" ? "สถานะ" : "หมวดหมู่"}
+                {groupBy === "status" ? "Status" : "Category"}
                 <IconChevronDown size={12} />
               </span>
             )}
           >
             {(close) => (
               <>
-                <MenuLabel>จัดคอลัมน์ตาม</MenuLabel>
+                <MenuLabel>Group columns by</MenuLabel>
                 <MenuItem
                   active={groupBy === "status"}
                   onClick={() => { onChangeGroupBy("status"); close() }}
                 >
-                  <span className="menu-grow">สถานะ</span>
+                  <span className="menu-grow">Status</span>
                   {groupBy === "status" && <IconCheck size={14} />}
                 </MenuItem>
                 <MenuItem
                   active={groupBy === "category"}
                   onClick={() => { onChangeGroupBy("category"); close() }}
                 >
-                  <span className="menu-grow">หมวดหมู่ (Frontend / Backend / ...)</span>
+                  <span className="menu-grow">Category (Frontend / Backend / ...)</span>
                   {groupBy === "category" && <IconCheck size={14} />}
                 </MenuItem>
               </>
@@ -167,7 +167,7 @@ export function Topbar({
             <input
               ref={searchRef}
               type="search"
-              placeholder="ค้นหางาน"
+              placeholder="Search tasks"
               value={query}
               onChange={(e) => onQueryChange(e.target.value)}
             />
@@ -231,7 +231,7 @@ function AuthChip({
     return (
       <Menu
         align="right"
-        title="บัญชีของฉัน"
+        title="My account"
         trigger={() => (
           <span className="tb-user">
             {auth.member?.avatarUrl ? (
@@ -247,7 +247,7 @@ function AuthChip({
           <>
             {auth.member?.githubLogin && <MenuLabel>@{auth.member.githubLogin}</MenuLabel>}
 
-            <MenuLabel>บทบาทของฉัน</MenuLabel>
+            <MenuLabel>My role</MenuLabel>
             {ROLES.map((r) => (
               <MenuItem
                 key={r}
@@ -259,7 +259,7 @@ function AuthChip({
               </MenuItem>
             ))}
 
-            <MenuItem onClick={() => { onLogout(); close() }}>ออกจากระบบ</MenuItem>
+            <MenuItem onClick={() => { onLogout(); close() }}>Sign out</MenuItem>
           </>
         )}
       </Menu>
@@ -269,10 +269,10 @@ function AuthChip({
   if (auth.configured) {
     return (
       <a className="tb-login" href="/api/auth/github">
-        <IconGithub size={14} /> เข้าสู่ระบบด้วย GitHub
+        <IconGithub size={14} /> Sign in with GitHub
       </a>
     )
   }
 
-  return <span className="tb-login is-off" title="ตั้ง GITHUB_CLIENT_ID ใน .env ก่อน">ยังไม่เปิดใช้ login</span>
+  return <span className="tb-login is-off" title="Set GITHUB_CLIENT_ID in .env first">Login disabled</span>
 }

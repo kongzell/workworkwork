@@ -1,0 +1,40 @@
+/* กรอบร่วมของแดชบอร์ด — หัวเรื่อง แท็บ และกล่องเลื่อน
+   เนื้อของแต่ละแท็บอยู่ที่ ProjectDashboard.css / MemberDashboard.css */
+
+.modal.dash { max-width: 700px; max-height: 92vh; }
+
+.dash-body { padding-top: 14px; }
+
+.modal-sub a { color: var(--accent); text-decoration: none; }
+.modal-sub a:hover { text-decoration: underline; }
+
+.dash-tabs {
+  display: flex;
+  gap: 2px;
+  padding: 0 16px;
+  border-bottom: 1px solid var(--border);
+}
+
+.dash-tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 9px 12px;
+  border: 0;
+  /* เส้นใต้แท็บที่เลือก วาดทับเส้นขอบล่างของแถบพอดี */
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1px;
+  background: none;
+  color: var(--text-dim);
+  font: inherit;
+  font-size: 13.5px;
+  cursor: pointer;
+}
+
+.dash-tab:hover { color: var(--text-strong); }
+
+.dash-tab.is-active {
+  border-bottom-color: var(--accent);
+  color: var(--text-strong);
+  font-weight: 600;
+}

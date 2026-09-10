@@ -10,7 +10,9 @@ import { AddProjectModal } from "./components/AddProjectModal"
 import { AiBreakdownModal } from "./components/AiBreakdownModal"
 import type { TaskDraft } from "./components/Board"
 import { Board } from "./components/Board"
-import { MemberDetailPanel, RightSidebar } from "./components/RightSidebar"
+import type { DashboardTab } from "./components/Dashboard"
+import { Dashboard } from "./components/Dashboard"
+import { RightSidebar } from "./components/RightSidebar"
 import { Sidebar } from "./components/Sidebar"
 import { Topbar } from "./components/Topbar"
 import { IconGithub, IconSparkle } from "./components/Icons"
@@ -32,6 +34,7 @@ export default function App() {
   const [aiOpen, setAiOpen] = useState(false)
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null)
   const [selectedMemberId, setSelectedMemberId] = useState<string | null>(null)
+  const [dashTab, setDashTab] = useState<DashboardTab | null>(null)
   const [starredIds, setStarredIds] = useState<string[]>([])
   const [theme, setTheme] = useState<ThemeId>(loadTheme)
   const [auth, setAuth] = useState<AuthStatus | null>(null)
@@ -53,7 +56,7 @@ export default function App() {
     } catch (e) {
       // ยังไม่ล็อกอินไม่ใช่ความผิดพลาด — หน้า NeedLogin บอกอยู่แล้ว
       setProjects([])
-      setSyncError(api.isUnauthorized(e) ? null : e instanceof Error ? e.message : "ต่อ API ไม่ได้")
+      setSyncError(api.isUnauthorized(e) ? null : e instanceof Error ? e.message : "Cannot reach the API")
       return null
     }
   }, [])
@@ -69,7 +72,7 @@ export default function App() {
         setSyncError(null)
       } catch (e) {
         setSyncError(
-          api.isUnauthorized(e) ? null : e instanceof Error ? e.message : "บันทึกไม่สำเร็จ",
+          api.isUnauthorized(e) ? null : e instanceof Error ? e.message : "Save failed",
         )
       }
       await refreshProjects()
@@ -122,7 +125,6 @@ export default function App() {
     [allMembers, project],
   )
 
-  const selectedMember = projectMembers.find((m) => m.id === selectedMemberId) ?? null
 
   const addTask = (status: StatusId, draft: TaskDraft) => {
     if (!project) return
@@ -243,7 +245,7 @@ export default function App() {
     <div className="app">
       {syncError && (
         <div className="sync-error" role="alert">
-          บันทึกลงฐานข้อมูลไม่สำเร็จ: {syncError}
+          Could not save to the database: {syncError}
         </div>
       )}
       {!collapsed && (
@@ -333,32 +335,22 @@ export default function App() {
           members={projectMembers}
           onOpenTaskRef={(ref) => setQuery(ref)}
           onAddMember={() => setMemberModalOpen(true)}
+          onOpenProject={() => setDashTab("project")}
           onOpenMember={(id) => {
             setSelectedMemberId(id)
             setSelectedTaskId(null)
+            setDashTab("member")
           }}
           isOwner={isOwner}
         />
-
-        {selectedMember && project && (
-          <MemberDetailPanel
-            member={selectedMember}
-            tasks={project.tasks}
-            onClose={() => setSelectedMemberId(null)}
-            onOpenTask={(id) => {
-              setSelectedMemberId(null)
-              setSelectedTaskId(id)
-            }}
-          />
-        )}
       </div>
 
       {isOwner && (
         <button
           type="button"
           className="ai-fab"
-          title="แตกงานด้วย AI"
-          aria-label="แตกงานด้วย AI"
+          title="Break down work with AI"
+          aria-label="Break down work with AI"
           onClick={() => setAiOpen(true)}
         >
           <IconSparkle size={22} />
@@ -379,6 +371,22 @@ export default function App() {
           onClose={() => setProjectModalOpen(false)}
           onAdd={addProject}
           onMembersChanged={refreshMembers}
+        />
+      )}
+
+      {dashTab !== null && project && (
+        <Dashboard
+          project={project}
+          members={projectMembers}
+          tab={dashTab}
+          memberId={selectedMemberId}
+          onChangeTab={setDashTab}
+          onSelectMember={setSelectedMemberId}
+          onClose={() => setDashTab(null)}
+          onOpenTask={(id) => {
+            setDashTab(null)
+            setSelectedTaskId(id)
+          }}
         />
       )}
 
@@ -403,15 +411,15 @@ export default function App() {
 function NeedLogin({ configured }: { configured: boolean }) {
   return (
     <div className="empty-projects">
-      <h2>เข้าสู่ระบบก่อนใช้งาน</h2>
+      <h2>Sign in to continue</h2>
       <p>
         {configured
-          ? "บอร์ดของแต่ละคนแยกกัน — เข้าสู่ระบบด้วย GitHub เพื่อดูโปรเจคที่คุณเป็นสมาชิก"
-          : "ยังไม่ได้ตั้งค่า GitHub OAuth — ดูวิธีตั้งค่าใน README.docker.md"}
+          ? "Everyone sees their own board — sign in with GitHub to see the projects you belong to"
+          : "GitHub OAuth is not configured — see README.docker.md for setup"}
       </p>
       {configured && (
         <a className="btn btn-primary" href="/api/auth/github">
-          <IconGithub size={14} /> เข้าสู่ระบบด้วย GitHub
+          <IconGithub size={14} /> Sign in with GitHub
         </a>
       )}
     </div>
@@ -421,10 +429,10 @@ function NeedLogin({ configured }: { configured: boolean }) {
 function EmptyProjects({ onOpen }: { onOpen: () => void }) {
   return (
     <div className="empty-projects">
-      <h2>ยังไม่มีโปรเจค</h2>
-      <p>เพิ่ม repository จาก GitHub มาทำเป็นบอร์ด หรือสร้างโปรเจคเปล่าก็ได้</p>
+      <h2>No projects yet</h2>
+      <p>Add a GitHub repository as a board, or start from an empty project</p>
       <button type="button" className="btn btn-primary" onClick={onOpen}>
-        <IconGithub size={14} /> เพิ่มโปรเจค
+        <IconGithub size={14} /> Add project
       </button>
     </div>
   )

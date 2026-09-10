@@ -37,7 +37,7 @@ async def _get_project(session: AsyncSession, project_id: str, me: Member) -> Pr
     """
     project = await session.get(Project, project_id)
     if project is None or me.id not in {m.id for m in project.members}:
-        raise HTTPException(404, f"ไม่พบโปรเจค {project_id}")
+        raise HTTPException(404, f"Project {project_id} not found")
     return project
 
 
@@ -45,7 +45,7 @@ async def _get_owned_project(session: AsyncSession, project_id: str, me: Member)
     """โปรเจคที่ me เป็นเจ้าของ — ใช้กับงานที่กระทบทั้งโปรเจค เช่น ลบ เปลี่ยนชื่อ จัดการสมาชิก"""
     project = await _get_project(session, project_id, me)
     if project.owner_id != me.id:
-        raise HTTPException(403, "เฉพาะเจ้าของโปรเจคเท่านั้นที่ทำรายการนี้ได้")
+        raise HTTPException(403, "Only the project owner can do this")
     return project
 
 
@@ -123,7 +123,7 @@ async def add_member(
     project = await _get_owned_project(session, project_id, me)
     member = await session.get(Member, member_id)
     if member is None:
-        raise HTTPException(404, f"ไม่พบพนักงาน {member_id}")
+        raise HTTPException(404, f"Member {member_id} not found")
     if member.id not in {m.id for m in project.members}:
         project.members.append(member)
         await session.commit()
@@ -139,7 +139,7 @@ async def remove_member(
     """เอาออกจากโปรเจค + ถอด assign ออกจากทุกงานของโปรเจคนี้ (งานโปรเจคอื่นไม่แตะ)"""
     project = await _get_owned_project(session, project_id, me)
     if member_id == project.owner_id:
-        raise HTTPException(400, "เอาเจ้าของโปรเจคออกไม่ได้")
+        raise HTTPException(400, "The project owner cannot be removed")
 
     await session.execute(
         delete(task_assignees).where(
@@ -213,9 +213,9 @@ async def create_task(
         except IntegrityError:
             await session.rollback()
             if attempt == 2:
-                raise HTTPException(409, "สร้างงานไม่สำเร็จเพราะเลขงานชนกัน ลองใหม่อีกครั้ง") from None
+                raise HTTPException(409, "Could not create the task, the task number collided — please try again") from None
             continue
         await session.refresh(task)
         return task_out(task)
 
-    raise HTTPException(409, "สร้างงานไม่สำเร็จ")
+    raise HTTPException(409, "Could not create the task")

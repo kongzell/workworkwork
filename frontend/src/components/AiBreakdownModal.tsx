@@ -29,7 +29,7 @@ export function AiBreakdownModal({ projectName, onClose, onAdd }: Props) {
   const run = async () => {
     const t = title.trim()
     if (!t) {
-      setError("ใส่หัวข้องานที่จะให้แตกก่อน")
+      setError("Enter what you want broken down first")
       return
     }
     setLoading(true)
@@ -40,7 +40,7 @@ export function AiBreakdownModal({ projectName, onClose, onAdd }: Props) {
       setResult(data)
       setPicked(new Set(data.subtasks.map((_, i) => i)))
     } catch (e) {
-      setError(e instanceof Error ? e.message : "เรียก AI ไม่สำเร็จ")
+      setError(e instanceof Error ? e.message : "The AI request failed")
     } finally {
       setLoading(false)
     }
@@ -63,26 +63,26 @@ export function AiBreakdownModal({ projectName, onClose, onAdd }: Props) {
         className="modal modal-wide"
         role="dialog"
         aria-modal="true"
-        aria-label="กระจายงานด้วย AI"
+        aria-label="Break down work with AI"
         onMouseDown={(e) => e.stopPropagation()}
       >
         <header className="modal-head">
           <div>
-            <h2 className="modal-title"><IconSparkle size={16} /> กระจายงานด้วย AI</h2>
+            <h2 className="modal-title"><IconSparkle size={16} /> Break down work with AI</h2>
             <p className="modal-sub">{projectName}</p>
           </div>
-          <button type="button" className="modal-close" onClick={onClose} title="ปิด">
+          <button type="button" className="modal-close" onClick={onClose} title="Close">
             <IconClose size={16} />
           </button>
         </header>
 
         <div className="modal-body">
           <div className="field">
-            <span className="field-label">หัวข้องาน</span>
+            <span className="field-label">What to build</span>
             <input
               autoFocus
               className="field-input"
-              placeholder="เช่น ทำระบบตะกร้าสินค้า"
+              placeholder="e.g. build a shopping cart"
               value={title}
               onChange={(e) => { setTitle(e.target.value); setError(null) }}
               onKeyDown={(e) => e.key === "Enter" && run()}
@@ -90,10 +90,10 @@ export function AiBreakdownModal({ projectName, onClose, onAdd }: Props) {
           </div>
 
           <div className="field">
-            <span className="field-label">ข้อมูลเพิ่มเติม (ไม่ใส่ก็ได้)</span>
+            <span className="field-label">More context (optional)</span>
             <input
               className="field-input"
-              placeholder="เช่น ใช้ React + FastAPI, มีระบบสมาชิกอยู่แล้ว"
+              placeholder="e.g. React + FastAPI, auth already exists"
               value={context}
               onChange={(e) => setContext(e.target.value)}
               onKeyDown={(e) => e.key === "Enter" && run()}
@@ -102,7 +102,7 @@ export function AiBreakdownModal({ projectName, onClose, onAdd }: Props) {
 
           <div className="ai-run">
             <button type="button" className="btn btn-primary" onClick={run} disabled={loading}>
-              {loading ? "กำลังคิด..." : <><IconSparkle size={14} /> กระจายงาน</>}
+              {loading ? "Thinking..." : <><IconSparkle size={14} /> Break down</>}
             </button>
           </div>
 
@@ -110,7 +110,7 @@ export function AiBreakdownModal({ projectName, onClose, onAdd }: Props) {
 
           {result?.mock && (
             <p className="ai-banner">
-              โหมดตัวอย่าง — ยังไม่ได้ตั้ง <code>GEMINI_API_KEY</code> ผลลัพธ์นี้เป็นข้อมูลปลอมที่เขียนไว้ในโค้ด
+              Demo mode — <code>GEMINI_API_KEY</code> is not set, so these results are hard-coded samples
             </p>
           )}
 
@@ -138,7 +138,7 @@ export function AiBreakdownModal({ projectName, onClose, onAdd }: Props) {
                         {s.tags.map((t) => (
                           <span key={t} className="ai-tag">{t}</span>
                         ))}
-                        <span className="ai-est">{s.estimateHours} ชม.</span>
+                        <span className="ai-est">{s.estimateHours} h</span>
                         <span
                           className="ai-cx"
                           style={{ color: COMPLEXITIES.find((c) => c.id === s.complexity)?.color }}
@@ -158,17 +158,17 @@ export function AiBreakdownModal({ projectName, onClose, onAdd }: Props) {
         <footer className="modal-foot">
           {result && (
             <span className="ai-total">
-              เลือก {chosen.length} งาน · รวม {totalHours.toFixed(1)} ชม.
+              {chosen.length} selected · {totalHours.toFixed(1)} h total
             </span>
           )}
-          <button type="button" className="btn" onClick={onClose}>ปิด</button>
+          <button type="button" className="btn" onClick={onClose}>Close</button>
           <button
             type="button"
             className="btn btn-primary"
             disabled={chosen.length === 0}
             onClick={() => { onAdd(title.trim(), chosen); onClose() }}
           >
-            <IconPlus size={14} /> เพิ่มเข้าโปรเจค
+            <IconPlus size={14} /> Add to project
           </button>
         </footer>
       </div>

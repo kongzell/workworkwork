@@ -17,7 +17,7 @@ from app import ai
 from app.auth import require_member
 from app.config import get_settings
 from app.db import SessionLocal, get_session
-from app.models import Member, Project, Task, WebhookEvent
+from app.models import Member, Project, Task, WebhookEvent, apply_status_change
 from app.schemas import (
     CommitOut,
     GithubRepo,
@@ -86,8 +86,7 @@ async def _advance_referenced_tasks(
             if review_url:
                 task.review_url = review_url
 
-            if task.status != status:
-                task.status = status
+            apply_status_change(task, status)
             moved += 1
 
     if moved:
@@ -191,18 +190,18 @@ async def _github_get(token: str, url: str, params: dict | None = None) -> list 
         async with httpx.AsyncClient(timeout=30) as client:
             res = await client.get(url, headers=headers, params=params)
     except httpx.HTTPError as exc:
-        raise HTTPException(502, f"ต่อ GitHub ไม่ได้ ({type(exc).__name__})") from exc
+        raise HTTPException(502, f"Could not reach GitHub ({type(exc).__name__})") from exc
 
     if res.status_code == 401:
-        raise HTTPException(401, "token ของ GitHub หมดอายุ — ออกจากระบบแล้วเข้าใหม่อีกครั้ง")
+        raise HTTPException(401, "Your GitHub token expired — sign out and sign in again")
     if res.status_code == 403:
         raise HTTPException(
             403,
-            "token ยังไม่มีสิทธิ์อ่าน repo — ออกจากระบบแล้วเข้าสู่ระบบใหม่ "
-            "แล้วกด Authorize เพื่ออนุญาตสิทธิ์เพิ่ม (หรือคุณไม่มีสิทธิ์ push ใน repo นี้)",
+            "Your token cannot read repos yet — sign out, sign in again and press Authorize "
+            "to grant the extra scope (or you have no push access to this repo)",
         )
     if res.status_code != 200:
-        raise HTTPException(502, f"GitHub ตอบกลับ {res.status_code}: {res.text[:200]}")
+        raise HTTPException(502, f"GitHub responded with {res.status_code}: {res.text[:200]}")
     return res.json()
 
 
@@ -211,7 +210,7 @@ def _need_token(member: Member) -> str:
     if not token:
         raise HTTPException(
             400,
-            "บัญชีนี้ไม่ได้เข้าสู่ระบบผ่าน GitHub — ออกจากระบบแล้วกด 'เข้าสู่ระบบด้วย GitHub' ก่อน",
+            "This account did not sign in through GitHub — sign out and use 'Sign in with GitHub'",
         )
     return token
 
@@ -366,8 +365,8 @@ async def commits(
     if not settings.github_repo:
         raise HTTPException(
             503,
-            "ยังไม่ได้ตั้ง GITHUB_REPO — ใส่เป็น owner/repo ในไฟล์ .env "
-            "(ต้อง push โปรเจคขึ้น GitHub ก่อน)",
+            "GITHUB_REPO is not set — put owner/repo in .env "
+            "(push the project to GitHub first)",
         )
 
     url = f"https://api.github.com/repos/{settings.github_repo}/commits"
@@ -379,10 +378,10 @@ async def commits(
         async with httpx.AsyncClient(timeout=30) as client:
             res = await client.get(url, headers=headers, params={"per_page": min(limit, 30)})
     except httpx.HTTPError as exc:
-        raise HTTPException(502, f"ต่อ GitHub ไม่ได้ ({type(exc).__name__})") from exc
+        raise HTTPException(502, f"Could not reach GitHub ({type(exc).__name__})") from exc
 
     if res.status_code != 200:
-        raise HTTPException(502, f"GitHub ตอบกลับ {res.status_code}: {res.text[:200]}")
+        raise HTTPException(502, f"GitHub responded with {res.status_code}: {res.text[:200]}")
 
     out: list[CommitOut] = []
     for row in res.json():
@@ -462,18 +461,18 @@ async def apply_suggestion(
     """
     event = await session.get(WebhookEvent, event_id)
     if event is None or not event.suggested_task_id:
-        raise HTTPException(404, "ไม่พบข้อเสนอนี้ อาจถูกใช้ไปแล้ว")
+        raise HTTPException(404, "Suggestion not found — it may already have been applied")
 
     task = await session.get(Task, event.suggested_task_id)
     if task is None:
-        raise HTTPException(404, "งานที่เสนอไว้ถูกลบไปแล้ว")
+        raise HTTPException(404, "The suggested task has been deleted")
 
     project = await session.get(Project, task.project_id)
     if project is None or project.owner_id != me.id:
-        raise HTTPException(403, "เฉพาะเจ้าของโปรเจคเท่านั้นที่ยืนยันข้อเสนอได้")
+        raise HTTPException(403, "Only the project owner can confirm a suggestion")
 
     if task.status != "complete":
-        task.status = "review"
+        apply_status_change(task, "review")
 
     event.suggested_task_id = None
     event.suggest_confidence = None
@@ -502,7 +501,7 @@ async def webhook(
             settings.github_webhook_secret.encode(), body, hashlib.sha256
         ).hexdigest()
         if not x_hub_signature_256 or not hmac.compare_digest(expected, x_hub_signature_256):
-            raise HTTPException(401, "ลายเซ็นไม่ถูกต้อง")
+            raise HTTPException(401, "Invalid signature")
 
     payload = await request.json()
     rows = _summarize(x_github_event, payload)

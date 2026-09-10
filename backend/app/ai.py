@@ -42,54 +42,56 @@ RESPONSE_SCHEMA = {
     "required": ["summary", "subtasks"],
 }
 
-PROMPT = """คุณคือ tech lead ที่ช่วยแตกงานให้ทีมพัฒนาซอฟต์แวร์
+PROMPT = """You are a tech lead breaking work down for a software team.
 
-งานที่ได้รับมา: "{title}"
+The request: "{title}"
 {context}
 
-แตกงานนี้เป็นงานย่อยที่ลงมือทำได้จริงและเช็คลิสต์ได้ ตามกติกานี้:
+Break it into subtasks that can actually be picked up and checked off:
 
-1. งานย่อยแต่ละข้อต้องเป็นสิ่งที่ "ทำแล้วรู้ว่าเสร็จ" เช่น "สร้างปุ่ม Add to Cart",
-   "เขียน API ตัดสต็อก", "ออกแบบตารางข้อมูลสินค้า" — ห้ามเป็นงานกว้าง ๆ อย่าง "ทำ frontend"
-2. ตั้งชื่องานย่อยเป็นภาษาไทย แต่คำเทคนิค ชื่อ library ชื่อ endpoint ให้คงเป็นภาษาอังกฤษ
-3. category เลือกจาก: {categories}
-4. tags คือทักษะ/เครื่องมือ/ภาษาที่ต้องใช้จริงกับงานย่อยนั้น เช่น React, TypeScript, PostgreSQL,
-   REST API — ใส่ 1-4 อัน ห้ามใส่คำกว้างอย่าง "coding" หรือ "programming"
-5. estimateHours คือชั่วโมงที่นักพัฒนาระดับกลางน่าจะใช้ ให้เป็นตัวเลขที่สมจริง (0.5-16)
-6. complexity: low = ตรงไปตรงมา, medium = ต้องคิดออกแบบบ้าง, high = มีความเสี่ยง/ของใหม่/กระทบหลายส่วน
-7. reason อธิบายสั้น ๆ ว่าทำไมถึงประเมินความยากระดับนั้น (ไม่เกิน 1 บรรทัด)
-8. แตกประมาณ {count} งานย่อย แต่ปรับจำนวนได้ตามความเหมาะสมของงาน (อย่างน้อย 3)
-   งานเล็กไม่ต้องยัดให้ครบ งานใหญ่แตกเพิ่มได้ เรียงตามลำดับที่ควรลงมือทำก่อนหลัง
+1. Every subtask must be something you can tell is finished, e.g. "Build the Add to Cart button",
+   "Write the stock deduction API", "Design the products table" — never something broad
+   like "do the frontend"
+2. Write every subtask in English
+3. category must be one of: {categories}
+4. tags are the skills/tools/languages the subtask actually needs, e.g. React, TypeScript,
+   PostgreSQL, REST API — give 1-4, never vague words like "coding" or "programming"
+5. estimateHours is what a mid-level developer would realistically spend (0.5-16)
+6. complexity: low = straightforward, medium = needs some design thinking,
+   high = risky, unfamiliar, or touching many parts
+7. reason explains in one line why you rated the complexity that way
+8. Aim for about {count} subtasks, but adjust to fit the work (at least 3).
+   Do not pad a small job; split a large one further. Order them the way they should be done.
 
-summary คือสรุปหนึ่งประโยคว่างานนี้โดยรวมคืออะไร"""
+summary is one sentence saying what the whole request is."""
 
 MOCK = BreakdownResult(
-    summary="[ตัวอย่าง] ระบบตะกร้าสินค้าฝั่งหน้าร้านและหลังบ้าน",
+    summary="[sample] Shopping cart, storefront and back office",
     mock=True,
     subtasks=[
         SubtaskSuggestion(
-            title="ออกแบบตารางข้อมูล cart และ cart_items",
+            title="Design the cart and cart_items tables",
             category="Database", tags=["PostgreSQL", "SQLAlchemy"],
             estimate_hours=2, complexity="medium",
-            reason="ต้องคิดเรื่องความสัมพันธ์กับตารางสินค้าให้จบตั้งแต่แรก",
+            reason="The relationship to the products table has to be settled up front",
         ),
         SubtaskSuggestion(
-            title="เขียน API เพิ่มสินค้าลงตะกร้า",
+            title="Write the add-to-cart API",
             category="Backend", tags=["FastAPI", "REST API"],
             estimate_hours=3, complexity="medium",
-            reason="ต้องกันกรณีสินค้าซ้ำและสต็อกไม่พอ",
+            reason="Has to handle duplicate items and insufficient stock",
         ),
         SubtaskSuggestion(
-            title="สร้างปุ่ม Add to Cart",
+            title="Build the Add to Cart button",
             category="Frontend", tags=["React", "TypeScript"],
             estimate_hours=1.5, complexity="low",
-            reason="เป็นงาน UI ตรงไปตรงมา",
+            reason="Straightforward UI work",
         ),
         SubtaskSuggestion(
-            title="เขียน API ตัดสต็อกตอนยืนยันคำสั่งซื้อ",
+            title="Write the stock deduction API for order confirmation",
             category="Backend", tags=["FastAPI", "Transaction"],
             estimate_hours=4, complexity="high",
-            reason="ต้องกันสต็อกติดลบเมื่อมีคนสั่งพร้อมกัน",
+            reason="Must not let stock go negative under concurrent orders",
         ),
     ],
 )
@@ -99,18 +101,18 @@ async def breakdown(title: str, context: str = "", count: int = 5) -> BreakdownR
     settings = get_settings()
 
     if settings.ai_mock and not settings.gemini_api_key:
-        return MOCK.model_copy(update={"summary": f"[ตัวอย่าง] {title}"})
+        return MOCK.model_copy(update={"summary": f"[sample] {title}"})
 
     if not settings.gemini_api_key:
         raise HTTPException(
             503,
-            "ยังไม่ได้ตั้ง GEMINI_API_KEY — ขอ key ที่ https://aistudio.google.com/apikey "
-            "แล้วใส่ในไฟล์ .env (หรือตั้ง AI_MOCK=true เพื่อลอง UI ด้วยข้อมูลตัวอย่างก่อน)",
+            "GEMINI_API_KEY is not set — get a key at https://aistudio.google.com/apikey "
+            "and put it in .env (or set AI_MOCK=true to try the UI with sample data first)",
         )
 
     prompt = PROMPT.format(
         title=title,
-        context=f"ข้อมูลเพิ่มเติมจากผู้ใช้: {context}" if context.strip() else "",
+        context=f"Extra context from the user: {context}" if context.strip() else "",
         categories=", ".join(CATEGORIES),
         count=count,
     )
@@ -133,17 +135,17 @@ async def breakdown(title: str, context: str = "", count: int = 5) -> BreakdownR
             )
     except httpx.HTTPError as exc:
         # ข้อความของ timeout เป็นสตริงว่าง ต้องเอาชื่อคลาสมาบอกด้วยถึงจะรู้เรื่อง
-        raise HTTPException(502, f"ต่อ Gemini ไม่ได้ ({type(exc).__name__}): {exc}") from exc
+        raise HTTPException(502, f"Could not reach Gemini ({type(exc).__name__}): {exc}") from exc
 
     if res.status_code != 200:
         detail = res.text[:300]
-        raise HTTPException(502, f"Gemini ตอบกลับ {res.status_code}: {detail}")
+        raise HTTPException(502, f"Gemini responded with {res.status_code}: {detail}")
 
     try:
         text = res.json()["candidates"][0]["content"]["parts"][0]["text"]
         data = json.loads(text)
     except (KeyError, IndexError, ValueError) as exc:
-        raise HTTPException(502, f"อ่านคำตอบจาก Gemini ไม่ได้: {exc}") from exc
+        raise HTTPException(502, f"Could not read the Gemini response: {exc}") from exc
 
     return BreakdownResult.model_validate({**data, "mock": False})
 
@@ -165,24 +167,23 @@ MATCH_SCHEMA = {
     "required": ["number", "confidence", "reason"],
 }
 
-MATCH_PROMPT = """คุณคือ tech lead ที่กำลังดูว่า commit ที่เพิ่งเข้ามาตรงกับงานใบไหนในบอร์ด
+MATCH_PROMPT = """You are a tech lead deciding which card on the board a new commit belongs to.
 
-ข้อความ commit: "{message}"
+Commit message: "{message}"
 
-รายการงานที่ยังไม่เสร็จในโปรเจคนี้:
+Unfinished tasks in this project:
 {tasks}
 
-ตอบว่า commit นี้น่าจะเป็นงานใบไหน ตามกติกา:
+Say which task this commit most likely refers to:
 
-1. number = เลขงานที่ตรงที่สุด ถ้าไม่มีใบไหนตรงเลยให้ตอบ 0
-2. ห้ามเดาสุ่ม — ถ้าข้อความ commit กว้างเกินไป เช่น "fix bug", "update", "แก้โค้ด"
-   หรือไม่เกี่ยวกับงานใบไหนเลย ให้ตอบ 0
+1. number = the task number that fits best. Answer 0 if none of them fit
+2. Never guess — if the commit message is too broad, e.g. "fix bug", "update", "wip",
+   or has nothing to do with any task, answer 0
 3. confidence:
-   high   = ข้อความพูดถึงสิ่งเดียวกับชื่องานชัดเจน
-   medium = เกี่ยวข้องกันแต่ไม่ได้ตรงคำต่อคำ
-   low    = พอเดาได้แต่ไม่มั่นใจ
-4. reason อธิบายสั้น ๆ ไม่เกิน 1 บรรทัด ว่าทำไมถึงเลือกใบนั้น (หรือทำไมถึงไม่ตรงกับใบไหน)
-   ตอบเป็นภาษาไทย"""
+   high   = the message clearly talks about the same thing as the task title
+   medium = related, but not word for word
+   low    = plausible, but you are not sure
+4. reason explains your choice in one line (or why nothing matched). Answer in English."""
 
 
 async def match_commit(message: str, tasks: list[dict]) -> dict | None:
@@ -198,7 +199,7 @@ async def match_commit(message: str, tasks: list[dict]) -> dict | None:
         return None
 
     listing = "\n".join(
-        f"- เลข {t['number']}: {t['title']}"
+        f"- number {t['number']}: {t['title']}"
         + (f"  [{t['category']}]" if t.get("category") else "")
         for t in tasks
     )

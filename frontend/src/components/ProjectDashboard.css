@@ -1,0 +1,278 @@
+/* เนื้อของแท็บ "Project overview" — กรอบอยู่ที่ Dashboard.css */
+
+/* แบ่งเป็นการ์ดมีขอบ 2 คอลัมน์ แทนแถบยาวเรียงลงมา
+   หัวข้อที่ยาวหรือกว้าง (ภาพรวม รายคน สิ่งที่ต้องจัดการ) กินเต็มแถวด้วย .is-wide */
+.pd-cards { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; align-items: start; }
+
+.pd-card {
+  padding: 13px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--bg-card);
+  min-width: 0;
+}
+
+.pd-card.is-wide { grid-column: 1 / -1; }
+.pd-card .modal-h3 { margin-bottom: 9px; }
+
+.pd-head-row { display: flex; align-items: center; gap: 10px; }
+.pd-head-row .modal-h3 { margin-bottom: 9px; flex: 1; }
+
+.pd-note {
+  margin: 8px 0 0;
+  font-size: 12.5px;
+  line-height: 1.55;
+  color: var(--text-faint);
+}
+
+.pd-note b { color: var(--text-strong); }
+
+/* ---------- ภาพรวม ---------- */
+
+.pd-top { display: flex; align-items: baseline; gap: 10px; margin-bottom: 7px; }
+
+.pd-percent { font-size: 26px; font-weight: 700; color: var(--text-strong); line-height: 1; }
+.pd-top-note { font-size: 12.5px; color: var(--text-faint); }
+
+.pd-progress {
+  display: block;
+  height: 8px;
+  border-radius: 999px;
+  background: var(--bg-app);
+  overflow: hidden;
+}
+
+.pd-progress > span {
+  display: block;
+  height: 100%;
+  border-radius: 999px;
+  background: var(--status-complete);
+  min-width: 2px;
+}
+
+/* ---------- กราฟความเร็วรายสัปดาห์ ---------- */
+
+.pd-weeks {
+  display: flex;
+  align-items: flex-end;
+  gap: 8px;
+  height: 110px;
+  padding: 4px 2px 0;
+}
+
+.pd-week {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  height: 100%;
+}
+
+.pd-week-val {
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--text-dim);
+  height: 13px;
+}
+
+.pd-week-bar {
+  flex: 1;
+  width: 100%;
+  display: flex;
+  align-items: flex-end;
+  border-bottom: 1px solid var(--border-strong);
+}
+
+.pd-week-bar > span {
+  width: 100%;
+  border-radius: 5px 5px 0 0;
+  background: var(--accent);
+  min-height: 2px;
+}
+
+/* สัปดาห์ปัจจุบันยังไม่จบ ทำให้จางลงเพื่อไม่ให้อ่านว่าความเร็วตก */
+.pd-week-bar > span.is-now { background: var(--status-progress); opacity: 0.55; }
+
+.pd-week-label { font-size: 10.5px; color: var(--text-faint); }
+
+/* ---------- แถวคน (ใช้ทั้งกราฟงานที่ปิด และหลอดภาระ) ---------- */
+
+.pd-people { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+
+.pd-person {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 3px 6px;
+  border: 0;
+  border-radius: 8px;
+  background: none;
+  color: var(--text);
+  font: inherit;
+  font-size: 13.5px;
+  text-align: left;
+  cursor: pointer;
+}
+
+.pd-person:hover { background: var(--bg-hover); }
+
+.pd-person-name {
+  flex: 0 0 130px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--text-strong);
+}
+
+/* แท่งซ้อนสี: แต่ละ span คือหนึ่งหมวดหมู่ ต่อกันไปทางขวา */
+.pd-person-bar {
+  flex: 1;
+  display: flex;
+  height: 12px;
+  border-radius: 999px;
+  background: var(--bg-app);
+  overflow: hidden;
+}
+
+.pd-person-bar > span { min-width: 2px; }
+.pd-person-bar > span:first-child { border-radius: 999px 0 0 999px; }
+.pd-person-bar > span:last-child { border-radius: 0 999px 999px 0; }
+.pd-person-bar > span:only-child { border-radius: 999px; }
+
+.pd-person-bar.is-plain > span.is-ok { background: var(--status-complete); }
+.pd-person-bar.is-plain > span.is-busy { background: var(--prio-high); }
+.pd-person-bar.is-plain > span.is-over { background: var(--danger); }
+
+.pd-person-num {
+  flex: 0 0 auto;
+  min-width: 54px;
+  font-family: var(--mono);
+  font-size: 11.5px;
+  color: var(--text-faint);
+  text-align: right;
+}
+
+.pd-person-num.is-busy { color: var(--prio-high); }
+.pd-person-num.is-over { color: var(--danger); font-weight: 600; }
+
+.pd-person-sub {
+  display: block;
+  margin: 1px 0 0 40px;
+  font-size: 11.5px;
+  color: var(--text-faint);
+}
+
+.pd-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 10px;
+  font-size: 11.5px;
+  color: var(--text-dim);
+}
+
+.pd-legend span { display: inline-flex; align-items: center; gap: 5px; }
+
+.pd-legend i {
+  width: 9px;
+  height: 9px;
+  border-radius: 3px;
+}
+
+/* ---------- แถวคอลัมน์ / หมวดหมู่ ---------- */
+
+.pd-cols { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+
+.pd-cols li { display: flex; align-items: center; gap: 8px; font-size: 13px; }
+
+.pd-col-name { flex: 0 0 110px; color: var(--text-dim); }
+
+.pd-col-bar {
+  flex: 1;
+  height: 10px;
+  border-radius: 999px;
+  background: var(--bg-app);
+  overflow: hidden;
+}
+
+.pd-col-bar > span { display: block; height: 100%; border-radius: 999px; min-width: 2px; }
+
+.pd-col-num {
+  flex: 0 0 auto;
+  min-width: 62px;
+  font-family: var(--mono);
+  font-size: 11.5px;
+  color: var(--text-faint);
+  text-align: right;
+}
+
+/* ---------- ต้องจัดการ ---------- */
+
+.pd-alerts { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 4px; }
+
+.pd-alerts li {
+  padding: 7px 10px;
+  border-left: 3px solid var(--border-strong);
+  border-radius: 0 8px 8px 0;
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.pd-alerts li.is-bad { border-left-color: var(--danger); background: rgba(229, 72, 77, 0.08); }
+.pd-alerts li.is-warn { border-left-color: var(--prio-high); background: rgba(245, 165, 36, 0.08); }
+.pd-alerts li.is-info { border-left-color: var(--status-progress); }
+
+/* ---------- รายการงานเล็ก ๆ ---------- */
+
+.pd-quick { list-style: none; margin: 8px 0 0; padding: 0; display: flex; flex-direction: column; gap: 3px; }
+
+.pd-quick button {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 5px 8px;
+  border: 0;
+  border-radius: 8px;
+  background: none;
+  color: var(--text);
+  font: inherit;
+  font-size: 13px;
+  text-align: left;
+  cursor: pointer;
+}
+
+.pd-quick button:hover { background: var(--bg-hover); color: var(--text-strong); }
+
+.pd-key { font-family: var(--mono); font-size: 11.5px; color: var(--text-faint); flex: 0 0 auto; }
+
+.pd-quick-title {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.pd-tag {
+  flex: 0 0 auto;
+  padding: 1px 7px;
+  border-radius: 999px;
+  background: rgba(229, 72, 77, 0.14);
+  color: var(--danger);
+  font-size: 11.5px;
+  font-weight: 600;
+}
+
+/* การ์ดครึ่งแถวมีที่น้อย บีบชื่อหมวดหมู่ลงให้แท่งยาวขึ้น
+   แต่ไม่บีบชื่อคน เพราะชื่อโดนตัดแล้วเสียมากกว่าที่ได้จากแท่งที่ยาวขึ้นนิดเดียว */
+.pd-card:not(.is-wide) .pd-col-name { flex-basis: 88px; }
+
+/* จอแคบ วางเรียงคอลัมน์เดียว ไม่งั้นแท่งกราฟบีบจนอ่านไม่ออก */
+@media (max-width: 620px) {
+  .pd-cards { grid-template-columns: 1fr; }
+  .pd-person-name { flex-basis: 90px; }
+  .pd-col-name { flex-basis: 80px; }
+}

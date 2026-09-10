@@ -85,7 +85,7 @@ export function Board({
           })),
           {
             key: "__none",
-            label: "ยังไม่จัดหมวด",
+            label: "Uncategorized",
             color: categoryColor(null),
             tasks: visible.filter((t) => !t.category),
             addStatus: "todo" as StatusId,
@@ -96,9 +96,9 @@ export function Board({
     <div className="board-wrap">
       {narrowed && (
         <div className="board-note">
-          แสดง {cardsOf(visible).length} จาก {cardsOf(project.tasks).length} งาน
+          Showing {cardsOf(visible).length} of {cardsOf(project.tasks).length} tasks
           <button type="button" className="board-note-clear" onClick={onClearFilters}>
-            ล้างตัวกรอง
+            Clear filters
           </button>
         </div>
       )}
@@ -223,7 +223,7 @@ function NewTask({ onSubmit }: { onSubmit: (draft: TaskDraft) => void }) {
   if (!editing) {
     return (
       <button type="button" className="add-task" onClick={() => setEditing(true)}>
-        <IconPlus size={14} /> เพิ่มงาน
+        <IconPlus size={14} /> Add task
       </button>
     )
   }
@@ -233,7 +233,7 @@ function NewTask({ onSubmit }: { onSubmit: (draft: TaskDraft) => void }) {
       <input
         autoFocus
         className="nt-title"
-        placeholder="ชื่องาน"
+        placeholder="Task name"
         value={title}
         onChange={(e) => setTitle(e.target.value)}
         onKeyDown={(e) => {
@@ -248,7 +248,7 @@ function NewTask({ onSubmit }: { onSubmit: (draft: TaskDraft) => void }) {
           value={category ?? ""}
           onChange={(e) => setCategory(e.target.value || null)}
         >
-          <option value="">หมวดหมู่</option>
+          <option value="">Category</option>
           {CATEGORIES.map((c) => (
             <option key={c.id} value={c.id}>{c.id}</option>
           ))}
@@ -259,7 +259,7 @@ function NewTask({ onSubmit }: { onSubmit: (draft: TaskDraft) => void }) {
           value={complexity ?? ""}
           onChange={(e) => setComplexity((e.target.value || null) as Complexity | null)}
         >
-          <option value="">ความยาก</option>
+          <option value="">Complexity</option>
           {COMPLEXITIES.map((c) => (
             <option key={c.id} value={c.id}>{c.label}</option>
           ))}
@@ -270,7 +270,7 @@ function NewTask({ onSubmit }: { onSubmit: (draft: TaskDraft) => void }) {
           type="number"
           min="0"
           step="0.5"
-          placeholder="ชม."
+          placeholder="hrs"
           value={hours}
           onChange={(e) => setHours(e.target.value)}
         />
@@ -278,7 +278,7 @@ function NewTask({ onSubmit }: { onSubmit: (draft: TaskDraft) => void }) {
 
       <input
         className="nt-tags"
-        placeholder="ทักษะที่ต้องใช้ เช่น React, PostgreSQL"
+        placeholder="Skills needed, e.g. React, PostgreSQL"
         value={tagText}
         onChange={(e) => setTagText(e.target.value)}
         onKeyDown={(e) => {
@@ -288,9 +288,9 @@ function NewTask({ onSubmit }: { onSubmit: (draft: TaskDraft) => void }) {
       />
 
       <div className="nt-actions">
-        <button type="button" className="nt-cancel" onClick={reset}>ยกเลิก</button>
+        <button type="button" className="nt-cancel" onClick={reset}>Cancel</button>
         <button type="button" className="nt-save" disabled={!title.trim()} onClick={commit}>
-          เพิ่มงาน
+          Add task
         </button>
       </div>
     </div>

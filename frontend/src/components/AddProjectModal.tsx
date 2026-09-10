@@ -33,7 +33,7 @@ export function AddProjectModal({ usedRepos, onClose, onAdd, onMembersChanged }:
         const rows = await getMyRepos()
         if (alive) setRepos(rows)
       } catch (e) {
-        if (alive) setError(e instanceof Error ? e.message : "ดึงรายชื่อ repo ไม่สำเร็จ")
+        if (alive) setError(e instanceof Error ? e.message : "Could not load your repositories")
       } finally {
         if (alive) setLoading(false)
       }
@@ -65,7 +65,7 @@ export function AddProjectModal({ usedRepos, onClose, onAdd, onMembersChanged }:
       )
       onClose()
     } catch (e) {
-      setError(e instanceof Error ? e.message : "ดึง collaborator ไม่สำเร็จ")
+      setError(e instanceof Error ? e.message : "Could not load collaborators")
     } finally {
       setAdding(null)
     }
@@ -77,21 +77,21 @@ export function AddProjectModal({ usedRepos, onClose, onAdd, onMembersChanged }:
         className="modal"
         role="dialog"
         aria-modal="true"
-        aria-label="เพิ่มโปรเจค"
+        aria-label="Add project"
         onMouseDown={(e) => e.stopPropagation()}
       >
         <header className="modal-head">
           <div>
-            <h2 className="modal-title"><IconGithub size={16} /> เพิ่มโปรเจคจาก GitHub</h2>
-            <p className="modal-sub">collaborator ของ repo จะถูกเพิ่มเป็นสมาชิกให้อัตโนมัติ</p>
+            <h2 className="modal-title"><IconGithub size={16} /> Add project from GitHub</h2>
+            <p className="modal-sub">Collaborators on the repo are added as members automatically</p>
           </div>
-          <button type="button" className="modal-close" onClick={onClose} title="ปิด">
+          <button type="button" className="modal-close" onClick={onClose} title="Close">
             <IconClose size={16} />
           </button>
         </header>
 
         <div className="modal-body">
-          {loading && <p className="modal-hint">กำลังโหลด repo...</p>}
+          {loading && <p className="modal-hint">Loading repositories...</p>}
 
           {error && (
             <p className="modal-error">
@@ -100,7 +100,7 @@ export function AddProjectModal({ usedRepos, onClose, onAdd, onMembersChanged }:
           )}
 
           {repos !== null && repos.length === 0 && (
-            <p className="modal-hint">ไม่เจอ repo ที่คุณมีสิทธิ์ push</p>
+            <p className="modal-hint">No repositories you can push to</p>
           )}
 
           {repos !== null && repos.length > 0 && (
@@ -119,7 +119,7 @@ export function AddProjectModal({ usedRepos, onClose, onAdd, onMembersChanged }:
                       disabled={used || adding !== null}
                       onClick={() => void addRepo(r.fullName)}
                     >
-                      {used ? "เพิ่มแล้ว" : adding === r.fullName ? "กำลังดึง..." : "เพิ่ม"}
+                      {used ? "Added" : adding === r.fullName ? "Adding..." : "Add"}
                     </button>
                   </li>
                 )
@@ -128,24 +128,24 @@ export function AddProjectModal({ usedRepos, onClose, onAdd, onMembersChanged }:
           )}
 
           <section className="modal-section">
-            <h3 className="modal-h3">หรือสร้างโปรเจคเปล่า</h3>
+            <h3 className="modal-h3">Or create an empty project</h3>
             <div className="empty-form">
               <input
                 className="field-input"
-                placeholder="ชื่อโปรเจค"
+                placeholder="Project name"
                 value={manual}
                 onChange={(e) => setManual(e.target.value)}
                 onKeyDown={(e) => e.key === "Enter" && addManual()}
               />
               <button type="button" className="btn" onClick={addManual}>
-                <IconPlus size={14} /> สร้าง
+                <IconPlus size={14} /> Create
               </button>
             </div>
           </section>
         </div>
 
         <footer className="modal-foot">
-          <button type="button" className="btn" onClick={onClose}>ปิด</button>
+          <button type="button" className="btn" onClick={onClose}>Close</button>
         </footer>
       </div>
     </div>

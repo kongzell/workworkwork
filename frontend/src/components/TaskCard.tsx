@@ -6,8 +6,8 @@ import {
 import { Avatar } from "./Avatar"
 import { Menu, MenuItem, MenuLabel } from "./Menu"
 import {
-  IconCalendar, IconCheck, IconDots, IconFlag, IconGithub, IconHand, IconPlus, IconTrash,
-  IconUser,
+  IconCalendar, IconCheck, IconDots, IconFlag, IconGithub, IconHand, IconPencil, IconPlus,
+  IconTrash, IconUser,
 } from "./Icons"
 
 type Props = {
@@ -73,8 +73,19 @@ export function TaskCard({
 
   return (
     <article
-      className={`card p-${task.priority}${task.status === "complete" ? " is-done" : ""}${expanded ? " is-open" : ""}`}
+      className={
+        `card p-${task.priority}` +
+        (task.status === "complete" ? " is-done" : "") +
+        (task.needsRework ? " is-rework" : "") +
+        (expanded ? " is-open" : "")
+      }
     >
+      {task.needsRework && (
+        <span className="card-rework" title="Sent back from review — fix it before resubmitting">
+          Needs rework
+        </span>
+      )}
+
       <div className="card-head">
         <button
           type="button"
@@ -82,16 +93,16 @@ export function TaskCard({
           aria-expanded={expanded}
           onClick={onOpen}
         >
-          <span className="card-key" title="พิมพ์รหัสนี้ในข้อความ commit เพื่อผูกกับการ์ดใบนี้">
+          <span className="card-key" title="Put this code in a commit message to link it to this card">
             {taskKey(taskPrefix, task.number)}
           </span>
           <h3 className="card-title">{task.title}</h3>
         </button>
         <div className="card-more">
-          <Menu align="right" title="ตัวเลือก" trigger={() => <IconDots size={15} />}>
+          <Menu align="right" title="Options" trigger={() => <IconDots size={15} />}>
             {(close) => (
               <>
-                <MenuLabel>ย้ายไปสถานะ</MenuLabel>
+                <MenuLabel>Move to</MenuLabel>
                 {movable.map((s) => (
                   <MenuItem
                     key={s.id}
@@ -103,7 +114,7 @@ export function TaskCard({
                     {s.id === task.status && <IconCheck size={14} />}
                   </MenuItem>
                 ))}
-                {isOwner && <MenuLabel>หมวดหมู่</MenuLabel>}
+                {isOwner && <MenuLabel>Category</MenuLabel>}
                 {isOwner && CATEGORIES.map((c) => (
                   <MenuItem
                     key={c.id}
@@ -118,7 +129,7 @@ export function TaskCard({
 
                 {isOwner && (
                   <MenuItem danger onClick={() => { onDelete(); close() }}>
-                    <IconTrash size={14} /> ลบงานนี้
+                    <IconTrash size={14} /> Delete task
                   </MenuItem>
                 )}
               </>
@@ -129,7 +140,7 @@ export function TaskCard({
 
       {subtasks.length > 0 && (
         <button type="button" className="card-sub" onClick={onOpen}>
-          งานย่อย {subDone}/{subtasks.length}
+          Subtasks {subDone}/{subtasks.length}
           <span className="card-sub-bar">
             <span style={{ width: `${(subDone / subtasks.length) * 100}%` }} />
           </span>
@@ -146,7 +157,7 @@ export function TaskCard({
           {task.tags.map((t) => (
             <span key={t} className="card-tag">{t}</span>
           ))}
-          {task.estimateHours !== null && <span className="card-est">{task.estimateHours} ชม.</span>}
+          {task.estimateHours !== null && <span className="card-est">{task.estimateHours} h</span>}
           {complexity && (
             <span className="card-cx" style={{ color: complexity.color }}>{complexity.label}</span>
           )}
@@ -159,7 +170,7 @@ export function TaskCard({
           href={code.url}
           target="_blank"
           rel="noreferrer"
-          title="เปิดดูโค้ดบน GitHub"
+          title="Open the code on GitHub"
         >
           <IconGithub size={12} />
           <span className="card-code-label">{code.label}</span>
@@ -173,25 +184,25 @@ export function TaskCard({
             <button
               type="button"
               className="card-claim"
-              title="รับงานนี้ไปทำ"
+              title="Take this task"
               onClick={onClaim}
             >
-              <IconHand size={12} /> รับงาน
+              <IconHand size={12} /> Take it
             </button>
           )}
           {task.dueDate && <span className="card-date">{fmtDue(task.dueDate)}</span>}
           {hasPriority && (
             <span className="card-prio" style={{ color: priority.color }}>{priority.label}</span>
           )}
-          {isBare && <span className="card-empty">ยังไม่กำหนด</span>}
+          {isBare && <span className="card-empty">Not set</span>}
         </div>
 
         <div className="card-tools">
-          <Menu title="ผู้รับผิดชอบ" trigger={() => <IconUser size={15} />}>
+          <Menu title="Assignee" trigger={() => <IconUser size={15} />}>
             {(close) => (
               <>
-                <MenuLabel>ผู้รับผิดชอบ</MenuLabel>
-                {members.length === 0 && <div className="menu-empty">ยังไม่มีพนักงานในโปรเจค</div>}
+                <MenuLabel>Assignee</MenuLabel>
+                {members.length === 0 && <div className="menu-empty">No members in this project</div>}
 
                 {isOwner ? (
                   <>
@@ -208,7 +219,7 @@ export function TaskCard({
                       </MenuItem>
                     ))}
                     <MenuItem onClick={onAddMember}>
-                      <IconPlus size={14} /> เพิ่มพนักงาน
+                      <IconPlus size={14} /> Add member
                     </MenuItem>
                   </>
                 ) : (
@@ -228,7 +239,7 @@ export function TaskCard({
                       >
                         <IconHand size={14} />
                         <span className="menu-grow">
-                          {task.assigneeIds.includes(currentMemberId) ? "ปล่อยงานนี้" : "รับงานนี้"}
+                          {task.assigneeIds.includes(currentMemberId) ? "Drop this task" : "Take this task"}
                         </span>
                       </MenuItem>
                     )}
@@ -239,27 +250,27 @@ export function TaskCard({
           </Menu>
 
           {isOwner && (
-          <Menu title="กำหนดส่ง" trigger={() => <IconCalendar size={15} />}>
+          <Menu title="Due date" trigger={() => <IconCalendar size={15} />}>
             {(close) => (
               <>
-                <MenuLabel>กำหนดส่ง</MenuLabel>
+                <MenuLabel>Due date</MenuLabel>
                 <input
                   type="date"
                   className="menu-date"
                   value={task.dueDate ?? ""}
                   onChange={(e) => onSetDue(e.target.value || null)}
                 />
-                <MenuItem onClick={() => { onSetDue(null); close() }}>ล้างวันที่</MenuItem>
+                <MenuItem onClick={() => { onSetDue(null); close() }}>Clear date</MenuItem>
               </>
             )}
           </Menu>
           )}
 
           {isOwner && (
-          <Menu title="ความสำคัญ" trigger={() => <IconFlag size={15} />}>
+          <Menu title="Priority" trigger={() => <IconFlag size={15} />}>
             {(close) => (
               <>
-                <MenuLabel>ความสำคัญ</MenuLabel>
+                <MenuLabel>Priority</MenuLabel>
                 {PRIORITIES.map((p) => (
                   <MenuItem key={p.id} active={p.id === task.priority} onClick={() => { onSetPriority(p.id); close() }}>
                     <span className="dot" style={{ background: p.color }} />
@@ -274,30 +285,53 @@ export function TaskCard({
         </div>
       </div>
 
+      {/* ปุ่มตรวจงาน — โผล่เฉพาะการ์ดที่รอตรวจ และเฉพาะเจ้าของโปรเจค
+          เป็นทางลัดของสองทางที่ต้องตัดสินหลังรีวิว: ให้ผ่าน หรือส่งกลับไปแก้ */}
+      {isOwner && task.status === "review" && (
+        <div className="card-review">
+          <button
+            type="button"
+            className="cr-back"
+            title="Send back for rework — the card moves to In Progress"
+            onClick={() => onChangeStatus("in-progress")}
+          >
+            <IconPencil size={12} /> Rework
+          </button>
+          <button
+            type="button"
+            className="cr-done"
+            title="Approve — close the task"
+            onClick={() => onChangeStatus("complete")}
+          >
+            <IconCheck size={12} /> Done
+          </button>
+        </div>
+      )}
+
       {expanded && (
         <div className="card-detail">
           <dl className="cd-fields">
             <div>
-              <dt>หมวดหมู่</dt>
+              <dt>Category</dt>
               <dd style={task.category ? { color: categoryColor(task.category) } : undefined}>
                 {task.category ?? "—"}
               </dd>
             </div>
             <div>
-              <dt>เวลาที่ประเมิน</dt>
-              <dd>{task.estimateHours ? `${task.estimateHours} ชม.` : "—"}</dd>
+              <dt>Estimated time</dt>
+              <dd>{task.estimateHours ? `${task.estimateHours} h` : "—"}</dd>
             </div>
             <div>
-              <dt>ความยาก</dt>
+              <dt>Complexity</dt>
               <dd style={complexity ? { color: complexity.color } : undefined}>
-                {complexity ? `${complexity.label} · ${taskPoints(task)} แต้ม` : "—"}
+                {complexity ? `${complexity.label} · ${taskPoints(task)} pts` : "—"}
               </dd>
             </div>
           </dl>
 
           {task.tags.length > 0 && (
             <div className="cd-block">
-              <span className="cd-label">ทักษะที่ต้องใช้</span>
+              <span className="cd-label">Skills needed</span>
               <div className="cd-tags">
                 {task.tags.map((t) => (
                   <span key={t} className="card-tag">{t}</span>
@@ -309,7 +343,7 @@ export function TaskCard({
           {subtasks.length > 0 && (
           <div className="cd-block">
             <span className="cd-label">
-              งานย่อย {subDone}/{subtasks.length}
+              Subtasks {subDone}/{subtasks.length}
             </span>
 
             {(
@@ -321,7 +355,7 @@ export function TaskCard({
                     <li key={s.id} className={s.status === "complete" ? "is-done" : ""}>
                       <Menu
                         align="left"
-                        title="สถานะของงานย่อย"
+                        title="Subtask status"
                         trigger={() => {
                           const st = STATUSES.find((x) => x.id === s.status)
                           return (
@@ -334,7 +368,7 @@ export function TaskCard({
                       >
                         {(close) => (
                           <>
-                            <MenuLabel>ย้ายไปสถานะ</MenuLabel>
+                            <MenuLabel>Move to</MenuLabel>
                             {movable.map((st) => (
                               <MenuItem
                                 key={st.id}
@@ -361,12 +395,12 @@ export function TaskCard({
                           )}
                           {cx && <span style={{ color: cx.color }}>{cx.label}</span>}
                           {s.estimateHours !== null && (
-                            <span className="cd-sub-hrs">{s.estimateHours} ชม.</span>
+                            <span className="cd-sub-hrs">{s.estimateHours} h</span>
                           )}
 
                           <Menu
                             align="right"
-                            title="ใครรับงานนี้"
+                            title="Who has this"
                             trigger={() =>
                               owners.length > 0 ? (
                                 <span className="cd-owners">
@@ -375,15 +409,15 @@ export function TaskCard({
                                   ))}
                                 </span>
                               ) : (
-                                <span className="cd-unassigned">ยังไม่มีใครรับ</span>
+                                <span className="cd-unassigned">Unassigned</span>
                               )
                             }
                           >
                             {() => (
                               <>
-                                <MenuLabel>ผู้รับผิดชอบ</MenuLabel>
+                                <MenuLabel>Assignee</MenuLabel>
                                 {members.length === 0 && (
-                                  <div className="menu-empty">ยังไม่มีพนักงานในโปรเจค</div>
+                                  <div className="menu-empty">No members in this project</div>
                                 )}
                                 {members.map((m) => (
                                   <MenuItem

@@ -12,7 +12,7 @@ export function ThemePicker({ value, onChange }: Props) {
   return (
     <Menu
       align="right"
-      title="เปลี่ยนธีม"
+      title="Change theme"
       trigger={() => (
         <span className="theme-trigger">
           <IconPalette size={15} />
@@ -23,7 +23,7 @@ export function ThemePicker({ value, onChange }: Props) {
     >
       {(close) => (
         <>
-          <MenuLabel>ธีมของ dashboard</MenuLabel>
+          <MenuLabel>Dashboard theme</MenuLabel>
           {THEMES.map((t) => (
             <MenuItem
               key={t.id}

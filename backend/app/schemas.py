@@ -86,6 +86,14 @@ class TaskOut(ApiModel):
     tags: list[str]
     estimate_hours: float | None
     complexity: Complexity | None
+    #: true เมื่อถูกตีกลับจากรอตรวจให้ไปแก้
+    needs_rework: bool = False
+    #: จำนวนครั้งที่ถูกตีกลับสะสม ใช้ดูคุณภาพงานย้อนหลัง
+    rework_count: int = 0
+    #: เวลาที่ปิดงาน ใช้เทียบกับ due_date ว่าส่งทันไหม
+    completed_at: datetime | None = None
+    #: เวลาที่สร้างการ์ด ใช้ดูว่าใบไหนค้างอยู่ในบอร์ดนานแล้ว
+    created_at: datetime | None = None
     #: branch ล่าสุดที่ commit ถึงงานนี้ (ไม่รวม branch หลัก)
     branch: str | None = None
     #: ลิงก์ PR ล่าสุดที่อ้างถึงงานนี้

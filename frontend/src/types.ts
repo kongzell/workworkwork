@@ -28,6 +28,14 @@ export type Task = {
   category: string | null
   tags: string[]
   estimateHours: number | null
+  /** true เมื่อถูกตีกลับจากรอตรวจให้ไปแก้ */
+  needsRework: boolean
+  /** จำนวนครั้งที่ถูกตีกลับสะสม */
+  reworkCount: number
+  /** เวลาที่ปิดงาน (ISO) — null ถ้ายังไม่เสร็จ */
+  completedAt: string | null
+  /** เวลาที่สร้างการ์ด (ISO) */
+  createdAt: string | null
   /** branch ล่าสุดที่ commit ถึงงานนี้ */
   branch: string | null
   /** ลิงก์ PR ล่าสุดที่อ้างถึงงานนี้ */
@@ -61,7 +69,7 @@ export const codeLink = (
   task: Pick<Task, "branch" | "reviewUrl">,
   githubRepo: string | null,
 ): { url: string; label: string } | null => {
-  if (task.reviewUrl) return { url: task.reviewUrl, label: "ดู Pull Request" }
+  if (task.reviewUrl) return { url: task.reviewUrl, label: "View Pull Request" }
   if (task.branch && githubRepo) {
     return {
       url: `https://github.com/${githubRepo}/compare/${encodeURIComponent(task.branch)}`,
@@ -72,18 +80,18 @@ export const codeLink = (
 }
 
 export const STATUSES: { id: StatusId; label: string; color: string }[] = [
-  { id: "todo", label: "รอเริ่ม", color: "var(--status-todo)" },
-  { id: "in-progress", label: "กำลังทำ", color: "var(--status-progress)" },
-  { id: "review", label: "รอตรวจ", color: "var(--status-review)" },
-  { id: "complete", label: "เสร็จแล้ว", color: "var(--status-complete)" },
+  { id: "todo", label: "To Do", color: "var(--status-todo)" },
+  { id: "in-progress", label: "In Progress", color: "var(--status-progress)" },
+  { id: "review", label: "In Review", color: "var(--status-review)" },
+  { id: "complete", label: "Done", color: "var(--status-complete)" },
 ]
 
 export const PRIORITIES: { id: PriorityId; label: string; color: string }[] = [
-  { id: "urgent", label: "ด่วน", color: "var(--danger)" },
-  { id: "high", label: "สูง", color: "var(--prio-high)" },
-  { id: "normal", label: "ปกติ", color: "var(--status-progress)" },
-  { id: "low", label: "ต่ำ", color: "var(--text-dim)" },
-  { id: "none", label: "ไม่ระบุ", color: "var(--text-faint)" },
+  { id: "urgent", label: "Urgent", color: "var(--danger)" },
+  { id: "high", label: "High", color: "var(--prio-high)" },
+  { id: "normal", label: "Normal", color: "var(--status-progress)" },
+  { id: "low", label: "Low", color: "var(--text-dim)" },
+  { id: "none", label: "None", color: "var(--text-faint)" },
 ]
 
 export const CATEGORIES: { id: string; color: string }[] = [
@@ -97,9 +105,9 @@ export const CATEGORIES: { id: string; color: string }[] = [
 ]
 
 export const COMPLEXITIES: { id: Complexity; label: string; color: string }[] = [
-  { id: "low", label: "ง่าย", color: "var(--status-complete)" },
-  { id: "medium", label: "ปานกลาง", color: "var(--prio-high)" },
-  { id: "high", label: "ยาก", color: "var(--danger)" },
+  { id: "low", label: "Easy", color: "var(--status-complete)" },
+  { id: "medium", label: "Medium", color: "var(--prio-high)" },
+  { id: "high", label: "Hard", color: "var(--danger)" },
 ]
 
 /**

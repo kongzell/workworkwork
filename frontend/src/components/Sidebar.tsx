@@ -32,7 +32,7 @@ export function Sidebar({
         <div className="sb-top-actions">
           <Menu
             align="right"
-            title="กรองงาน"
+            title="Filter tasks"
             trigger={() => (
               <span className={`sb-icon-btn${filterOn ? " is-on" : ""}`}>
                 <IconFilter size={15} />
@@ -41,12 +41,12 @@ export function Sidebar({
           >
             {(close) => (
               <>
-                <MenuLabel>ผู้รับผิดชอบ</MenuLabel>
+                <MenuLabel>Assignee</MenuLabel>
                 <MenuItem
                   active={filters.assigneeId === null}
                   onClick={() => onChangeFilters({ ...filters, assigneeId: null })}
                 >
-                  <span className="menu-grow">ทุกคน</span>
+                  <span className="menu-grow">Everyone</span>
                   {filters.assigneeId === null && <IconCheck size={14} />}
                 </MenuItem>
                 {members.map((m) => (
@@ -61,12 +61,12 @@ export function Sidebar({
                   </MenuItem>
                 ))}
 
-                <MenuLabel>ความสำคัญ</MenuLabel>
+                <MenuLabel>Priority</MenuLabel>
                 <MenuItem
                   active={filters.priority === null}
                   onClick={() => onChangeFilters({ ...filters, priority: null })}
                 >
-                  <span className="menu-grow">ทุกระดับ</span>
+                  <span className="menu-grow">All levels</span>
                   {filters.priority === null && <IconCheck size={14} />}
                 </MenuItem>
                 {PRIORITIES.filter((p) => p.id !== "none").map((p) => (
@@ -88,14 +88,14 @@ export function Sidebar({
                       close()
                     }}
                   >
-                    ล้างตัวกรอง
+                    Clear filters
                   </MenuItem>
                 )}
               </>
             )}
           </Menu>
 
-          <button type="button" className="sb-icon-btn" title="ย่อแถบข้าง" onClick={onCollapse}>
+          <button type="button" className="sb-icon-btn" title="Collapse sidebar" onClick={onCollapse}>
             <IconChevronLeft size={15} />
           </button>
         </div>
@@ -109,7 +109,7 @@ export function Sidebar({
             <button
               type="button"
               className="sb-icon-btn sb-row-end"
-              title="เพิ่มโปรเจค"
+              title="Add project"
               onClick={onOpenAddProject}
             >
               <IconPlus size={14} />

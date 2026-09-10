@@ -1,0 +1,264 @@
+/* เนื้อของแท็บ "People" — กรอบอยู่ที่ Dashboard.css */
+
+/* ---------- แถบสลับคน ---------- */
+
+.md-switch {
+  display: flex;
+  gap: 6px;
+  padding-bottom: 12px;
+  margin-bottom: 14px;
+  overflow-x: auto;
+  border-bottom: 1px solid var(--border);
+  scrollbar-width: thin;
+}
+
+.md-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex: 0 0 auto;
+  padding: 4px 10px 4px 4px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: none;
+  color: var(--text-dim);
+  font: inherit;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.md-chip:hover { background: var(--bg-hover); color: var(--text-strong); }
+
+.md-chip.is-active {
+  border-color: var(--accent);
+  background: var(--bg-active);
+  color: var(--text-strong);
+  font-weight: 600;
+}
+
+.md-chip-name { white-space: nowrap; }
+
+/* ---------- หัวคน + ช่วงเวลา ---------- */
+
+.md-head { display: flex; align-items: center; gap: 10px; }
+
+.md-who { display: flex; flex-direction: column; min-width: 0; }
+.md-name { font-size: 16px; font-weight: 700; color: var(--text-strong); }
+.md-role { font-size: 13px; color: var(--text-faint); }
+
+.md-range {
+  display: flex;
+  gap: 2px;
+  margin-left: auto;
+  padding: 2px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+
+.md-range-btn {
+  padding: 3px 9px;
+  border: 0;
+  border-radius: 6px;
+  background: none;
+  color: var(--text-dim);
+  font: inherit;
+  font-size: 12.5px;
+  cursor: pointer;
+}
+
+.md-range-btn:hover { color: var(--text-strong); }
+.md-range-btn.is-active { background: var(--bg-active); color: var(--text-strong); font-weight: 600; }
+
+/* ---------- หลอดภาระงาน ---------- */
+
+.md-load { margin-top: 14px; }
+
+.md-load-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  margin-bottom: 5px;
+  font-size: 13px;
+  color: var(--text-dim);
+}
+
+.md-load-num { font-family: var(--mono); font-size: 12px; color: var(--text-faint); }
+.md-load-num.is-busy { color: var(--prio-high); }
+.md-load-num.is-over { color: var(--danger); font-weight: 600; }
+
+.md-load-bar {
+  display: block;
+  height: 7px;
+  border-radius: 999px;
+  background: var(--bg-active);
+  overflow: hidden;
+}
+
+.md-load-fill { display: block; height: 100%; border-radius: 999px; min-width: 2px; }
+.md-load-fill.is-ok { background: var(--status-complete); }
+.md-load-fill.is-busy { background: var(--prio-high); }
+.md-load-fill.is-over { background: var(--danger); }
+
+/* ---------- ตัวเลขสรุป ---------- */
+
+.md-tiles {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+  margin: 14px 0 0;
+}
+
+.md-tiles > div {
+  padding: 9px 10px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--bg-card);
+}
+
+.md-tiles dt { font-size: 12px; color: var(--text-faint); }
+
+.md-tiles dd {
+  margin: 3px 0 0;
+  font-size: 19px;
+  font-weight: 700;
+  color: var(--text-strong);
+}
+
+.md-tiles dd.is-bad { color: var(--danger); }
+
+.md-note {
+  margin: 9px 0 0;
+  font-size: 12.5px;
+  line-height: 1.5;
+  color: var(--text-faint);
+}
+
+/* ---------- บล็อกย่อย ---------- */
+
+.md-block { margin-top: 18px; }
+
+/* ---------- จุดที่ควรคุย ---------- */
+
+.md-talk { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 4px; }
+
+.md-talk-row button,
+.md-talk-plain {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  width: 100%;
+  padding: 7px 10px;
+  border: 0;
+  border-left: 3px solid var(--border-strong);
+  border-radius: 0 8px 8px 0;
+  background: var(--bg-card);
+  color: var(--text);
+  font: inherit;
+  font-size: 13.5px;
+  text-align: left;
+  cursor: pointer;
+}
+
+.md-talk-plain { cursor: default; }
+
+.md-talk-row.is-bad button,
+.md-talk-row.is-bad .md-talk-plain {
+  border-left-color: var(--danger);
+  background: rgba(229, 72, 77, 0.08);
+}
+
+.md-talk-row.is-warn button {
+  border-left-color: var(--prio-high);
+  background: rgba(245, 165, 36, 0.08);
+}
+
+.md-talk-row button:hover { filter: brightness(1.12); }
+
+.md-talk-key { font-family: var(--mono); font-size: 11.5px; color: var(--text-faint); }
+.md-talk-title { flex: 1; min-width: 0; color: var(--text-strong); }
+
+.md-talk-note {
+  flex: 0 0 auto;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--text-dim);
+}
+
+.md-talk-row.is-bad .md-talk-note { color: var(--danger); }
+.md-talk-row.is-warn .md-talk-note { color: var(--prio-high); }
+
+/* ---------- ทักษะ ---------- */
+
+.md-skills { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 6px; }
+
+.md-skills li {
+  padding: 3px 9px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--bg-card);
+  font-size: 12.5px;
+  color: var(--text-dim);
+}
+
+.md-skills b { color: var(--text-strong); }
+
+/* ---------- รายการงาน ---------- */
+
+.md-group { margin-bottom: 10px; }
+
+.md-group-title {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 5px;
+  font-size: 12.5px;
+  color: var(--text-dim);
+}
+
+.md-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 3px; }
+
+.md-list button {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 6px 9px;
+  border: 0;
+  border-radius: 8px;
+  background: none;
+  color: var(--text);
+  font: inherit;
+  font-size: 13.5px;
+  text-align: left;
+  cursor: pointer;
+}
+
+.md-list button:hover { background: var(--bg-hover); color: var(--text-strong); }
+
+.md-key { font-family: var(--mono); font-size: 11.5px; color: var(--text-faint); flex: 0 0 auto; }
+.md-title { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+.md-tag {
+  flex: 0 0 auto;
+  padding: 1px 7px;
+  border-radius: 999px;
+  font-size: 11.5px;
+  font-weight: 600;
+}
+
+.md-tag.is-ok { background: rgba(34, 197, 94, 0.14); color: var(--status-complete); }
+.md-tag.is-warn { background: rgba(245, 165, 36, 0.16); color: var(--prio-high); }
+.md-tag.is-bad { background: rgba(229, 72, 77, 0.14); color: var(--danger); }
+
+.md-pts {
+  flex: 0 0 auto;
+  min-width: 18px;
+  font-family: var(--mono);
+  font-size: 11.5px;
+  color: var(--text-faint);
+  text-align: right;
+}
+
+@media (max-width: 640px) {
+  .md-tiles { grid-template-columns: repeat(2, 1fr); }
+}

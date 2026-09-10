@@ -11,6 +11,7 @@ from datetime import UTC, date, datetime
 
 from sqlalchemy import (
     JSON,
+    Boolean,
     Column,
     Date,
     DateTime,
@@ -139,6 +140,18 @@ class Task(Base):
     # --- ฟิลด์ที่ AI เติมให้ (ผู้ใช้แก้เองได้) ---
     #: Frontend / Backend / Database / ... — ใช้เป็นคอลัมน์ได้เมื่อจัดกลุ่มตามหมวดหมู่
     category: Mapped[str | None] = mapped_column(String(40), nullable=True)
+    #: true เมื่อเจ้าของตีงานกลับจาก "รอตรวจ" ให้กลับไปแก้
+    #: ล้างเมื่อส่งตรวจใหม่หรือปิดงาน — ใช้ทำให้การ์ดขึ้นสีเตือน
+    needs_rework: Mapped[bool] = mapped_column(Boolean, default=False, server_default="false")
+    #: นับสะสมว่างานใบนี้ถูกตีกลับมาแก้กี่ครั้ง
+    #: ต้องแยกจาก needs_rework เพราะอันนั้นถูกล้างทุกครั้งที่ส่งตรวจใหม่
+    #: ประวัติจึงหายไป ใช้ประเมินคุณภาพงานย้อนหลังไม่ได้
+    rework_count: Mapped[int] = mapped_column(Integer, default=0, server_default="0")
+    #: เวลาที่งานถูกปิด — เทียบกับ due_date เพื่อดูว่าส่งทันกำหนดไหม
+    #: ใช้ updated_at แทนไม่ได้ เพราะขยับทุกครั้งที่มีคนแก้การ์ดหลังปิดงาน
+    completed_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
     #: branch ล่าสุดที่มี commit อ้างถึงงานนี้ ใช้ลิงก์ไปดู diff บน GitHub
     branch: Mapped[str | None] = mapped_column(String(255), nullable=True)
     #: ลิงก์ PR ล่าสุดที่อ้างถึงงานนี้ — ดีกว่า branch เพราะเห็นรีวิวด้วย
@@ -155,6 +168,33 @@ class Task(Base):
 
     project: Mapped[Project] = relationship(back_populates="tasks")
     assignees: Mapped[list[Member]] = relationship(secondary=task_assignees, lazy="selectin")
+
+
+def apply_status_change(task: Task, new_status: str) -> None:
+    """เปลี่ยนสถานะงานพร้อมบันทึกประวัติที่ใช้ประเมินผลงานทีหลัง
+
+    ต้องเรียกผ่านตัวนี้เสมอแทนการ set task.status ตรง ๆ เพราะมีสองทางที่ย้าย
+    การ์ดได้ — คนกดบนเว็บ กับ webhook ที่ GitHub ยิงมา ถ้าแยกกันเขียนจะลืม
+    อัปเดตข้างใดข้างหนึ่งแล้วตัวเลขในแดชบอร์ดเพี้ยน
+    """
+    if new_status == task.status:
+        return
+
+    # ตีกลับจากรอตรวจ = ต้องแก้ · ส่งตรวจใหม่หรือปิดงาน = เลิกทำเครื่องหมาย
+    # ถ้าถูกดึงกลับไปรอเริ่มยังคงธงไว้ เพราะงานก็ยังไม่ผ่านการตรวจอยู่ดี
+    if task.status == "review" and new_status == "in-progress":
+        task.needs_rework = True
+        task.rework_count += 1
+    elif new_status in ("review", "complete"):
+        task.needs_rework = False
+
+    # เปิดงานที่ปิดไปแล้วขึ้นมาใหม่ ให้ลืมวันปิดเดิม ไม่งั้นจะนับว่าเสร็จซ้ำ
+    if new_status == "complete":
+        task.completed_at = _now()
+    elif task.completed_at is not None:
+        task.completed_at = None
+
+    task.status = new_status
 
 
 class WebhookEvent(Base):

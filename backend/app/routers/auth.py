@@ -44,8 +44,8 @@ async def start_github() -> RedirectResponse:
     if not settings.github_ready:
         raise HTTPException(
             503,
-            "ยังไม่ได้ตั้ง GITHUB_CLIENT_ID / GITHUB_CLIENT_SECRET — "
-            "สร้าง OAuth App ที่ https://github.com/settings/developers แล้วใส่ในไฟล์ .env",
+            "GITHUB_CLIENT_ID / GITHUB_CLIENT_SECRET are not set — "
+            "create an OAuth App at https://github.com/settings/developers and put them in .env",
         )
     state = secrets.token_urlsafe(24)
     _pending_states.add(state)
@@ -67,10 +67,10 @@ async def github_callback(
 ) -> RedirectResponse:
     settings = get_settings()
     if state not in _pending_states:
-        raise HTTPException(400, "state ไม่ถูกต้อง — ลองเข้าสู่ระบบใหม่อีกครั้ง")
+        raise HTTPException(400, "Invalid state — please sign in again")
     _pending_states.discard(state)
     if not code:
-        raise HTTPException(400, "GitHub ไม่ได้ส่ง code กลับมา")
+        raise HTTPException(400, "GitHub did not send a code back")
 
     async with httpx.AsyncClient(timeout=30) as client:
         token_res = await client.post(
@@ -85,14 +85,14 @@ async def github_callback(
         )
         token = token_res.json().get("access_token")
         if not token:
-            raise HTTPException(502, f"แลก token ไม่สำเร็จ: {token_res.text[:200]}")
+            raise HTTPException(502, f"Token exchange failed: {token_res.text[:200]}")
 
         user_res = await client.get(
             USER_API,
             headers={"Authorization": f"Bearer {token}", "Accept": "application/vnd.github+json"},
         )
         if user_res.status_code != 200:
-            raise HTTPException(502, f"อ่านโปรไฟล์ไม่สำเร็จ: {user_res.status_code}")
+            raise HTTPException(502, f"Could not read the profile: {user_res.status_code}")
         profile = user_res.json()
 
     member = await _upsert_member(session, profile, token)

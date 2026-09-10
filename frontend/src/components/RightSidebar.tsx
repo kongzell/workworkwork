@@ -2,11 +2,9 @@ import { useEffect, useState } from "react"
 import type { Commit, SystemHealth, WebhookEvent } from "../api"
 import { applySuggestion, getCommits, getSystemHealth, getWebhookEvents } from "../api"
 import type { Member, Project, Task } from "../types"
-import {
-  openTasksOf, STATUSES, taskPoints, WORKLOAD_CAPACITY, workloadLevel,
-} from "../types"
+import { openTasksOf, taskPoints, WORKLOAD_CAPACITY, workloadLevel } from "../types"
 import { Avatar } from "./Avatar"
-import { IconChevronRight, IconPlus } from "./Icons"
+import { IconPlus } from "./Icons"
 import "./RightSidebar.css"
 
 type Props = {
@@ -14,6 +12,7 @@ type Props = {
   members: Member[]
   onOpenTaskRef: (ref: string) => void
   onAddMember: () => void
+  onOpenProject: () => void
   onOpenMember: (id: string) => void
   /** เจ้าของโปรเจคเท่านั้นที่เพิ่มพนักงานได้ */
   isOwner: boolean
@@ -25,11 +24,12 @@ export function RightSidebar({
   onOpenTaskRef,
   onAddMember,
   onOpenMember,
+  onOpenProject,
   isOwner,
 }: Props) {
   return (
     <aside className="rs">
-      {project && <ProjectStats project={project} />}
+      {project && <ProjectStats project={project} onOpen={onOpenProject} />}
       {project && (
         <TeamPanel
           members={members}
@@ -47,7 +47,7 @@ export function RightSidebar({
 
 /* ---------- Project Context & Stats ---------- */
 
-function ProjectStats({ project }: { project: Project }) {
+function ProjectStats({ project, onOpen }: { project: Project; onOpen: () => void }) {
   const cards = project.tasks.filter((t) => !t.parentId)
   const done = project.tasks.filter((t) => t.status === "complete").length
   const doing = project.tasks.filter((t) => t.status === "in-progress").length
@@ -58,24 +58,27 @@ function ProjectStats({ project }: { project: Project }) {
   const hours = project.tasks.reduce((sum, t) => sum + (t.estimateHours ?? 0), 0)
 
   return (
-    <section className="rs-panel">
+    <section className="rs-panel rs-panel-btn" onClick={onOpen} role="button" tabIndex={0}
+      title="Open project overview"
+      onKeyDown={(e) => (e.key === "Enter" || e.key === " ") && onOpen()}
+    >
       <header className="rs-head">
         <span className="rs-title">{project.name}</span>
         <span className="rs-badge">{percent}%</span>
       </header>
 
-      <div className="rs-progress" role="img" aria-label={`คืบหน้า ${percent} เปอร์เซ็นต์`}>
+      <div className="rs-progress" role="img" aria-label={`${percent} percent complete`}>
         <span style={{ width: `${percent}%` }} />
       </div>
 
       <dl className="rs-stats">
-        <div><dt>งานทั้งหมด</dt><dd>{total}</dd></div>
-        <div><dt>งานหลัก</dt><dd>{cards.length}</dd></div>
-        <div><dt>รอเริ่ม</dt><dd className="c-todo">{todo}</dd></div>
-        <div><dt>กำลังทำ</dt><dd className="c-prog">{doing}</dd></div>
-        <div><dt>รอตรวจ</dt><dd className="c-review">{review}</dd></div>
-        <div><dt>เสร็จแล้ว</dt><dd className="c-done">{done}</dd></div>
-        <div><dt>เวลาที่ประเมิน</dt><dd>{hours ? `${hours.toFixed(1)} ชม.` : "—"}</dd></div>
+        <div><dt>All tasks</dt><dd>{total}</dd></div>
+        <div><dt>Main cards</dt><dd>{cards.length}</dd></div>
+        <div><dt>To Do</dt><dd className="c-todo">{todo}</dd></div>
+        <div><dt>In Progress</dt><dd className="c-prog">{doing}</dd></div>
+        <div><dt>In Review</dt><dd className="c-review">{review}</dd></div>
+        <div><dt>Done</dt><dd className="c-done">{done}</dd></div>
+        <div><dt>Estimated time</dt><dd>{hours ? `${hours.toFixed(1)} h` : "—"}</dd></div>
       </dl>
     </section>
   )
@@ -110,14 +113,14 @@ function TeamPanel({
   return (
     <section className="rs-panel">
       <header className="rs-head">
-        <span className="rs-title">ทีมในโปรเจค</span>
+        <span className="rs-title">Project team</span>
         <span className="rs-count">{members.length}</span>
       </header>
 
-      {members.length === 0 && <p className="rs-empty">ยังไม่มีใครในโปรเจคนี้</p>}
+      {members.length === 0 && <p className="rs-empty">Nobody in this project yet</p>}
 
       {total > 0 && (
-        <p className="rs-fair">งานในโปรเจครวม {total} แต้ม · เพดานคนละ {WORKLOAD_CAPACITY}</p>
+        <p className="rs-fair">{total} points across the project · cap {WORKLOAD_CAPACITY} each</p>
       )}
 
       <ul className="rs-team">
@@ -139,7 +142,7 @@ function TeamPanel({
                     />
                   </span>
                   <span className={`rs-load-num is-${level}`}>
-                    {points}/{WORKLOAD_CAPACITY} · {count} งาน
+                    {points}/{WORKLOAD_CAPACITY} · {count} tasks
                   </span>
                 </div>
               </button>
@@ -150,86 +153,10 @@ function TeamPanel({
 
       {isOwner && (
         <button type="button" className="rs-add-member" onClick={onAddMember}>
-          <IconPlus size={14} /> เพิ่มพนักงาน
+          <IconPlus size={14} /> Add member
         </button>
       )}
     </section>
-  )
-}
-
-/* ---------- งานของคนคนหนึ่ง (slide-out) ---------- */
-
-export function MemberDetailPanel({
-  member,
-  tasks,
-  onClose,
-  onOpenTask,
-}: {
-  member: Member
-  tasks: Task[]
-  onClose: () => void
-  onOpenTask: (id: string) => void
-}) {
-  const mine = tasks.filter((t) => t.assigneeIds.includes(member.id))
-  const open = mine.filter((t) => t.status !== "complete")
-  const points = open.reduce((sum, t) => sum + taskPoints(t), 0)
-  const hours = open.reduce((sum, t) => sum + (t.estimateHours ?? 0), 0)
-
-  return (
-    <aside className="rs-detail" role="dialog" aria-label={`งานของ ${member.name}`}>
-      <header className="rs-detail-head">
-        <button type="button" className="rs-detail-close" onClick={onClose} title="ปิด">
-          <IconChevronRight size={16} />
-        </button>
-        <span className="rs-title">งานที่รับผิดชอบ</span>
-      </header>
-
-      <div className="rs-detail-body">
-        <div className="rs-member-head">
-          <Avatar member={member} size={34} />
-          <div>
-            <div className="rs-detail-title">{member.name}</div>
-            <div className="rs-member-role">{member.role}</div>
-          </div>
-        </div>
-
-        <dl className="rs-fields">
-          <div>
-            <dt>ภาระงานที่ค้าง</dt>
-            <dd className={`rs-load-num is-${workloadLevel(points)}`}>
-              {points}/{WORKLOAD_CAPACITY} แต้ม
-              {points >= WORKLOAD_CAPACITY && " · งานล้นมือ"}
-            </dd>
-          </div>
-          <div><dt>จำนวนงานที่ค้าง</dt><dd>{open.length} งาน</dd></div>
-          <div><dt>เวลาที่ประเมิน</dt><dd>{hours ? `${hours.toFixed(1)} ชม.` : "—"}</dd></div>
-        </dl>
-
-        {mine.length === 0 && <p className="rs-empty">ยังไม่ได้รับงานในโปรเจคนี้</p>}
-
-        {STATUSES.map((s) => {
-          const rows = mine.filter((t) => t.status === s.id)
-          if (rows.length === 0) return null
-          return (
-            <div className="rs-block" key={s.id}>
-              <span className="rs-block-title">
-                <span className="dot" style={{ background: s.color }} /> {s.label} · {rows.length}
-              </span>
-              <ul className="rs-mine">
-                {rows.map((t) => (
-                  <li key={t.id}>
-                    <button type="button" className="rs-mine-row" onClick={() => onOpenTask(t.id)}>
-                      <span className="rs-mine-title">{t.title}</span>
-                      <span className="rs-mine-pts">{taskPoints(t)}</span>
-                    </button>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          )
-        })}
-      </div>
-    </aside>
   )
 }
 
@@ -275,7 +202,7 @@ function GithubActivity({
       await applySuggestion(eventId)
       setTick((t) => t + 1)
     } catch (e) {
-      setNote(e instanceof Error ? e.message : "ย้ายการ์ดไม่สำเร็จ")
+      setNote(e instanceof Error ? e.message : "Could not move the card")
     } finally {
       setApplying(null)
     }
@@ -297,8 +224,8 @@ function GithubActivity({
         const raw = String(c.reason?.message ?? "")
         setNote(
           raw.includes("rate limit")
-            ? "GitHub จำกัดจำนวนครั้งที่เรียกได้ต่อชั่วโมง — เข้าสู่ระบบด้วย GitHub จะได้โควตาสูงขึ้นมาก"
-            : raw || "ดึง commit ไม่สำเร็จ",
+            ? "GitHub limits how many calls you can make per hour — signing in with GitHub raises that limit a lot"
+            : raw || "Could not load commits",
         )
         // โดนจำกัดแล้วอย่ายิงซ้ำอัตโนมัติ รอผู้ใช้กดรีเฟรชเอง
         if (raw.includes("rate limit") && timer) clearInterval(timer)
@@ -351,15 +278,15 @@ function GithubActivity({
         <button
           type="button"
           className="rs-refresh"
-          title="ดึงใหม่"
+          title="Reload"
           disabled={loading}
           onClick={() => setTick((t) => t + 1)}
         >
-          {loading ? "..." : "รีเฟรช"}
+          {loading ? "..." : "Refresh"}
         </button>
       </header>
 
-      {rows.length === 0 && <p className="rs-empty">{note ?? "ยังไม่มีความเคลื่อนไหว"}</p>}
+      {rows.length === 0 && <p className="rs-empty">{note ?? "No activity yet"}</p>}
 
       <ul className="rs-feed">
         {rows.slice(0, 10).map((r) => (
@@ -379,7 +306,7 @@ function GithubActivity({
               {r.suggest && (
                 <div className={`rs-guess is-${r.suggest.confidence}`}>
                   <span className="rs-guess-head">
-                    AI เดาว่าเป็น <strong>{r.suggest.key}</strong> {r.suggest.title}
+                    AI thinks this is <strong>{r.suggest.key}</strong> {r.suggest.title}
                   </span>
                   {r.suggest.reason && <span className="rs-guess-why">{r.suggest.reason}</span>}
                   {isOwner && (
@@ -389,7 +316,7 @@ function GithubActivity({
                       disabled={applying === r.suggest.eventId}
                       onClick={() => void apply(r.suggest!.eventId)}
                     >
-                      {applying === r.suggest.eventId ? "กำลังย้าย..." : "ย้ายไปรอตรวจ"}
+                      {applying === r.suggest.eventId ? "Moving..." : "Move to In Review"}
                     </button>
                   )}
                 </div>
@@ -433,17 +360,17 @@ function HealthBar() {
 
   const items =
     !reachable || !health
-      ? [{ label: "API", ok: false, note: "ต่อไม่ได้" }]
+      ? [{ label: "API", ok: false, note: "unreachable" }]
       : [
           { label: "API", ok: health.apiOk, note: undefined as string | undefined },
           { label: "Database", ok: health.databaseOk, note: health.databaseError ?? health.databaseKind },
           { label: "AI", ok: health.aiReady, note: health.aiModel },
           { label: "Login", ok: health.authReady, note: undefined },
-          { label: "Webhook", ok: health.webhookReady, note: health.githubRepo ?? "ยังไม่เชื่อม repo" },
+          { label: "Webhook", ok: health.webhookReady, note: health.githubRepo ?? "no repo linked" },
           {
             label: "Secrets",
             ok: health.secretsReady,
-            note: health.secretsReady ? "ตั้งค่าแล้ว" : "ยังใช้ค่า dev — ห้าม deploy",
+            note: health.secretsReady ? "configured" : "still on dev values — do not deploy",
           },
         ]
 

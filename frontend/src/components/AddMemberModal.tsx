@@ -40,7 +40,7 @@ export function AddMemberModal({
   const submit = () => {
     const n = name.trim()
     if (!n) {
-      setError("กรุณากรอกชื่อพนักงาน")
+      setError("Please enter a name")
       return
     }
     onCreate(n, role, color)
@@ -54,23 +54,23 @@ export function AddMemberModal({
         className="modal"
         role="dialog"
         aria-modal="true"
-        aria-label={`เพิ่มพนักงานใน ${projectName}`}
+        aria-label={`Add members to ${projectName}`}
         onMouseDown={(e) => e.stopPropagation()}
       >
         <header className="modal-head">
           <div>
-            <h2 className="modal-title">เพิ่มพนักงานเข้าโปรเจค</h2>
+            <h2 className="modal-title">Add members to project</h2>
             <p className="modal-sub">{projectName}</p>
           </div>
-          <button type="button" className="modal-close" onClick={onClose} title="ปิด">
+          <button type="button" className="modal-close" onClick={onClose} title="Close">
             <IconClose size={16} />
           </button>
         </header>
 
         <div className="modal-body">
           <section className="modal-section">
-            <h3 className="modal-h3">อยู่ในโปรเจคแล้ว ({members.length})</h3>
-            {members.length === 0 && <p className="modal-empty">ยังไม่มีใครในโปรเจคนี้</p>}
+            <h3 className="modal-h3">In this project ({members.length})</h3>
+            {members.length === 0 && <p className="modal-empty">Nobody in this project yet</p>}
             <ul className="member-list">
               {members.map((m) => (
                 <li key={m.id} className="member-row">
@@ -82,7 +82,7 @@ export function AddMemberModal({
                   <button
                     type="button"
                     className="member-action is-danger"
-                    title="เอาออกจากโปรเจค"
+                    title="Remove from project"
                     onClick={() => onRemove(m.id)}
                   >
                     <IconTrash size={14} />
@@ -94,7 +94,7 @@ export function AddMemberModal({
 
           {available.length > 0 && (
             <section className="modal-section">
-              <h3 className="modal-h3">พนักงานใน workspace</h3>
+              <h3 className="modal-h3">People in the workspace</h3>
               <ul className="member-list">
                 {available.map((m) => (
                   <li key={m.id} className="member-row">
@@ -104,7 +104,7 @@ export function AddMemberModal({
                       <span className="member-role">{m.role}</span>
                     </span>
                     <button type="button" className="member-action" onClick={() => onAddExisting(m.id)}>
-                      <IconPlus size={14} /> เพิ่ม
+                      <IconPlus size={14} /> Add
                     </button>
                   </li>
                 ))}
@@ -164,9 +164,9 @@ export function AddMemberModal({
         </div>
 
         <footer className="modal-foot">
-          <button type="button" className="btn" onClick={onClose}>ปิด</button>
+          <button type="button" className="btn" onClick={onClose}>Close</button>
           <button type="button" className="btn btn-primary" onClick={submit}>
-            <IconPlus size={14} /> เพิ่มพนักงาน
+            <IconPlus size={14} /> Add member
           </button>
         </footer>
       </div>
@@ -186,8 +186,8 @@ function GithubImport({ repo, onImported }: { repo: string; onImported: () => vo
     setBusy(true)
     try {
       const result = await importRepoCollaborators(repo)
-      const pendingNote = result.pending > 0 ? ` (ยังไม่ตอบรับคำเชิญ ${result.pending} คน)` : ""
-      setMessage(`เพิ่มใหม่ ${result.created} คน, อัปเดต ${result.updated} คน${pendingNote}`)
+      const pendingNote = result.pending > 0 ? ` (${result.pending} invite(s) still pending)` : ""
+      setMessage(`Added ${result.created}, updated ${result.updated}${pendingNote}`)
       onImported()
     } catch (e) {
       setError(e instanceof Error ? e.message : "Failed to fetch member list")

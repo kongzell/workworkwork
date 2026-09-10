@@ -48,5 +48,5 @@ async def current_member(
 async def require_member(member: Member | None = Depends(current_member)) -> Member:
     """ใช้กับ endpoint ที่ต้องล็อกอินก่อน"""
     if member is None:
-        raise HTTPException(401, "ต้องเข้าสู่ระบบก่อน")
+        raise HTTPException(401, "You need to sign in first")
     return member

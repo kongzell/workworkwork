@@ -40,7 +40,7 @@ async function readError(res: Response): Promise<string> {
   } catch {
     /* ไม่ใช่ JSON ก็ปล่อยไปใช้ข้อความมาตรฐาน */
   }
-  return `เซิร์ฟเวอร์ตอบกลับ ${res.status}`
+  return `Server responded with ${res.status}`
 }
 
 export async function breakdownTask(
@@ -63,6 +63,10 @@ export async function breakdownTask(
 type ApiTask = {
   id: string
   number: number
+  needsRework: boolean
+  reworkCount: number
+  completedAt: string | null
+  createdAt: string | null
   branch: string | null
   reviewUrl: string | null
   parentId: string | null
@@ -91,6 +95,10 @@ type ApiProject = {
 const toTask = (t: ApiTask): Task => ({
   id: t.id,
   number: t.number,
+  needsRework: t.needsRework,
+  reworkCount: t.reworkCount,
+  completedAt: t.completedAt,
+  createdAt: t.createdAt,
   branch: t.branch,
   reviewUrl: t.reviewUrl,
   parentId: t.parentId,
