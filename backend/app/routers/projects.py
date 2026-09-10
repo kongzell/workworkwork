@@ -1,10 +1,11 @@
 import re
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException
 from sqlalchemy import delete, func, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app import mailer, notify
 from app.auth import require_member
 from app.db import get_session
 from app.models import Member, Project, Task, project_members, task_assignees
@@ -175,11 +176,12 @@ async def remove_member(
 async def create_task(
     project_id: str,
     payload: TaskCreate,
+    background: BackgroundTasks,
     me: Member = Depends(require_member),
     session: AsyncSession = Depends(get_session),
 ) -> TaskOut:
     """เฉพาะเจ้าของโปรเจคที่เพิ่มงานได้ — สมาชิกรับงานและอัปเดตสถานะได้อย่างเดียว"""
-    await _get_owned_project(session, project_id, me)
+    project = await _get_owned_project(session, project_id, me)
 
     # วางต่อท้ายคอลัมน์ที่ระบุ
     last = await session.scalar(
@@ -217,6 +219,15 @@ async def create_task(
                 raise HTTPException(409, "Could not create the task, the task number collided — please try again") from None
             continue
         await session.refresh(task)
+
+        # งานย่อยที่ AI แตกมาไม่ต้องแจ้ง ไม่งั้นกดครั้งเดียวได้อีเมล 5 ฉบับรวด
+        # แจ้งเฉพาะการ์ดหลักที่โผล่บนบอร์ดจริง ๆ
+        if task.parent_id is None:
+            to = await notify.project_emails(session, project_id, exclude={me.id})
+            if to:
+                subject, body = notify.task_created(project, task, me)
+                background.add_task(mailer.send, to, subject, body)
+
         return task_out(task)
 
     raise HTTPException(409, "Could not create the task")

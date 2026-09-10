@@ -27,6 +27,7 @@ type Props = {
   onChangeGroupBy: (g: "status" | "category") => void
   onLogout: () => void
   onChangeRole: (role: string) => void
+  onChangeEmail: (email: string) => void
   onQueryChange: (q: string) => void
   onSelectProject: (id: string) => void
   onRenameProject: (name: string) => void
@@ -38,7 +39,8 @@ type Props = {
 
 export function Topbar({
   project, projects, taskCount, query, searchRef, starred, collapsed, theme,
-  canDelete, groupBy, auth, onChangeGroupBy, onLogout, onChangeRole, onQueryChange,
+  canDelete, groupBy, auth, onChangeGroupBy, onLogout, onChangeRole, onChangeEmail,
+  onQueryChange,
   onSelectProject, onRenameProject, onDeleteProject, onToggleStar, onExpand,
   onChangeTheme,
 }: Props) {
@@ -175,7 +177,12 @@ export function Topbar({
           <span className="tb-divider" />
             </>
           )}
-          <AuthChip auth={auth} onLogout={onLogout} onChangeRole={onChangeRole} />
+          <AuthChip
+            auth={auth}
+            onLogout={onLogout}
+            onChangeRole={onChangeRole}
+            onChangeEmail={onChangeEmail}
+          />
           <ThemePicker value={theme} onChange={onChangeTheme} />
         </div>
       </div>
@@ -220,11 +227,17 @@ function AuthChip({
   auth,
   onLogout,
   onChangeRole,
+  onChangeEmail,
 }: {
   auth: AuthStatus | null
   onLogout: () => void
   onChangeRole: (role: string) => void
+  onChangeEmail: (email: string) => void
 }) {
+  // เก็บค่าที่พิมพ์ไว้เอง ไม่ผูกกับ prop ตลอดเวลา
+  // ไม่งั้นพิมพ์ไปครึ่งทางแล้วมีอะไรมา re-render ค่าจะเด้งกลับ
+  const [emailDraft, setEmailDraft] = useState<string | null>(null)
+
   if (auth === null) return null
 
   if (auth.member) {
@@ -258,6 +271,37 @@ function AuthChip({
                 {r === auth.member?.role && <IconCheck size={14} />}
               </MenuItem>
             ))}
+
+            <MenuLabel>Email notifications</MenuLabel>
+            <div className="tb-mail" onClick={(e) => e.stopPropagation()}>
+              <input
+                type="email"
+                className="tb-mail-input"
+                placeholder="you@example.com"
+                value={emailDraft ?? auth.member?.email ?? ""}
+                onChange={(e) => setEmailDraft(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key !== "Enter") return
+                  onChangeEmail((emailDraft ?? "").trim())
+                  setEmailDraft(null)
+                  close()
+                }}
+              />
+              <button
+                type="button"
+                className="tb-mail-save"
+                onClick={() => {
+                  onChangeEmail((emailDraft ?? auth.member?.email ?? "").trim())
+                  setEmailDraft(null)
+                  close()
+                }}
+              >
+                Save
+              </button>
+            </div>
+            <p className="tb-mail-hint">
+              Leave it empty to stop receiving mail
+            </p>
 
             <MenuItem onClick={() => { onLogout(); close() }}>Sign out</MenuItem>
           </>

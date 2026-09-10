@@ -12,7 +12,7 @@ from app.config import get_settings
 from app.db import get_session
 from app.models import Member
 from app.routers.github import auto_join_projects
-from app.schemas import AuthStatus, MemberOut, MemberUpdate
+from app.schemas import AuthStatus, MeOut, MemberUpdate
 
 router = APIRouter(prefix="/api/auth", tags=["auth"])
 
@@ -34,7 +34,7 @@ async def status(member: Member | None = Depends(current_member)) -> AuthStatus:
     settings = get_settings()
     return AuthStatus(
         configured=settings.github_ready,
-        member=MemberOut.model_validate(member) if member else None,
+        member=MeOut.model_validate(member) if member else None,
     )
 
 
@@ -103,7 +103,7 @@ async def github_callback(
     return response
 
 
-@router.patch("/me", response_model=MemberOut)
+@router.patch("/me", response_model=MeOut)
 async def update_me(
     payload: MemberUpdate,
     member: Member = Depends(require_member),
@@ -114,6 +114,12 @@ async def update_me(
         member.role = payload.role
     if payload.color is not None:
         member.color = payload.color
+    if payload.email is not None:
+        # ว่าง = เลิกรับแจ้งเตือน เก็บเป็น NULL ไม่ใช่สตริงว่าง
+        cleaned = payload.email.strip()
+        if cleaned and "@" not in cleaned:
+            raise HTTPException(400, "That does not look like an email address")
+        member.email = cleaned or None
     await session.commit()
     await session.refresh(member)
     return member

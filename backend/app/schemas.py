@@ -28,10 +28,12 @@ class MemberCreate(ApiModel):
 
 
 class MemberUpdate(ApiModel):
-    """แก้ข้อมูลของตัวเอง — ตอนนี้มีแค่บทบาทกับสี"""
+    """แก้ข้อมูลของตัวเอง — บทบาท สี และอีเมลรับแจ้งเตือน"""
 
     role: str | None = Field(default=None, min_length=1, max_length=60)
     color: str | None = Field(default=None, pattern=r"^#[0-9a-fA-F]{6}$")
+    #: อีเมลรับแจ้งเตือน — ส่งสตริงว่างมาเพื่อเลิกรับ
+    email: str | None = Field(default=None, max_length=200)
 
 
 class MemberOut(ApiModel):
@@ -41,6 +43,16 @@ class MemberOut(ApiModel):
     color: str
     github_login: str | None = None
     avatar_url: str | None = None
+
+
+class MeOut(MemberOut):
+    """ข้อมูลของตัวเอง — มีอีเมลด้วย
+
+    ตั้งใจไม่ใส่ email ไว้ใน MemberOut เพราะ /api/members คืนรายชื่อทุกคน
+    ในระบบ ถ้าใส่ตรงนั้นเท่ากับเปิดอีเมลของทุกคนให้ทุกคนที่ล็อกอินเห็น
+    """
+
+    email: str | None = None
 
 
 # ---------- tasks ----------
@@ -173,7 +185,7 @@ class BreakdownResult(ApiModel):
 class AuthStatus(ApiModel):
     #: ตั้ง GITHUB_CLIENT_ID/SECRET แล้วหรือยัง
     configured: bool
-    member: MemberOut | None = None
+    member: MeOut | None = None
 
 
 # ---------- github ----------

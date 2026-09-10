@@ -4,7 +4,9 @@ import type { ThemeId } from "./themes"
 import { loadTheme, saveTheme } from "./themes"
 import type { AuthStatus, SubtaskSuggestion } from "./api"
 import * as api from "./api"
-import { createMemberApi, getAuthStatus, getMembers, logout, updateMyRole } from "./api"
+import {
+  createMemberApi, getAuthStatus, getMembers, logout, updateMyEmail, updateMyRole,
+} from "./api"
 import { AddMemberModal } from "./components/AddMemberModal"
 import { AddProjectModal } from "./components/AddProjectModal"
 import { AiBreakdownModal } from "./components/AiBreakdownModal"
@@ -294,6 +296,10 @@ export default function App() {
           }}
           onChangeRole={async (role) => {
             await updateMyRole(role)
+            await refreshAuth()
+          }}
+          onChangeEmail={async (email) => {
+            await updateMyEmail(email)
             await refreshAuth()
           }}
         />

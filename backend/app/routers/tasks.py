@@ -1,7 +1,8 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app import mailer, notify
 from app.auth import require_member
 from app.db import get_session
 from app.models import (
@@ -121,6 +122,7 @@ async def delete_task(
 async def assign(
     task_id: str,
     member_id: str,
+    background: BackgroundTasks,
     me: Member = Depends(require_member),
     session: AsyncSession = Depends(get_session),
 ) -> TaskOut:
@@ -148,6 +150,14 @@ async def assign(
         task.assignees.append(member)
         await session.commit()
         await session.refresh(task)
+
+        # เจ้าของต้องรู้ว่างานเริ่มเดินแล้ว ส่วนคนที่ถูกมอบหมายต้องรู้ว่ามีงานเข้า
+        # ตัดคนที่กดปุ่มเองออก เพราะเขารู้อยู่แล้ว
+        watchers = {project.owner_id, member.id} - {me.id, None}
+        to = await notify.emails_of(session, watchers)
+        if to:
+            subject, body = notify.task_claimed(project, task, member)
+            background.add_task(mailer.send, to, subject, body)
     return task_out(task)
 
 

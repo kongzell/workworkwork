@@ -1,3 +1,4 @@
+import logging
 from datetime import UTC, datetime
 from pathlib import Path
 
@@ -11,6 +12,12 @@ from app.config import get_settings
 from app.routers import ai, auth, github, members, projects, system, tasks
 
 settings = get_settings()
+
+# uvicorn ตั้ง handler ให้เฉพาะ logger ของตัวเอง logger ของแอปเราจึงเงียบสนิท
+# ตั้งแต่ระดับ INFO ลงมา ทำให้ log ของการแจ้งเตือนไม่โผล่ทั้งที่ทำงานอยู่
+logging.basicConfig(level=logging.INFO, format="%(levelname)s %(name)s | %(message)s")
+# httpx log ทุกครั้งที่เรียก GitHub/Gemini ที่ระดับ INFO — รกและไม่ได้ใช้
+logging.getLogger("httpx").setLevel(logging.WARNING)
 
 # docs วางไว้ใต้ /api เพื่อให้ผ่าน proxy ของ vite (dev) และ nginx (prod) ได้เหมือน endpoint อื่น
 app = FastAPI(

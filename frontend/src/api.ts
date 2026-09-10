@@ -225,6 +225,8 @@ export type AuthMember = {
   color: string
   githubLogin: string | null
   avatarUrl: string | null
+  /** อีเมลรับแจ้งเตือน — null คือไม่รับ */
+  email: string | null
 }
 
 export type AuthStatus = {
@@ -241,10 +243,19 @@ export async function getAuthStatus(): Promise<AuthStatus> {
 }
 
 export async function updateMyRole(role: string): Promise<AuthMember> {
+  return patchMe({ role })
+}
+
+/** ตั้งอีเมลรับแจ้งเตือน — ส่งสตริงว่างเพื่อเลิกรับ */
+export async function updateMyEmail(email: string): Promise<AuthMember> {
+  return patchMe({ email })
+}
+
+async function patchMe(patch: Record<string, string>): Promise<AuthMember> {
   const res = await fetch("/api/auth/me", {
     method: "PATCH",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ role }),
+    body: JSON.stringify(patch),
   })
   if (!res.ok) throw new ApiError(await readError(res), res.status)
   return res.json()
