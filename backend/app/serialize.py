@@ -8,6 +8,7 @@ def task_out(task: Task) -> TaskOut:
         number=task.number,
         parent_id=task.parent_id,
         title=task.title,
+        description=task.description,
         status=task.status,
         priority=task.priority,
         due_date=task.due_date,

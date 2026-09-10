@@ -84,7 +84,11 @@ export default function App() {
   const refreshMembers = useCallback(async () => {
     try {
       const rows = await getMembers()
-      setAllMembers(rows.map(({ id, name, role, color }) => ({ id, name, role, color })))
+      setAllMembers(
+        rows.map(({ id, name, role, color, avatarUrl }) => ({
+          id, name, role, color, avatarUrl,
+        })),
+      )
     } catch {
       // ยังไม่ได้ล็อกอินหรือ backend ยังไม่ขึ้น — ไม่มีรายชื่อให้แสดง
       setAllMembers([])
@@ -147,6 +151,7 @@ export default function App() {
       for (const s of picked) {
         await api.createTask(project.id, {
           title: s.title,
+          description: s.description || null,
           parentId: parent.id,
           category: s.category,
           tags: s.tags,
@@ -315,6 +320,9 @@ export default function App() {
             onSetPriority={(taskId, priority: PriorityId) => void sync(() => api.updateTask(taskId, { priority }))}
             onSetDue={(taskId, dueDate) => void sync(() => api.updateTask(taskId, { dueDate }))}
             onSetCategory={(taskId, category) => void sync(() => api.updateTask(taskId, { category }))}
+            onSetDescription={(taskId, description) =>
+              void sync(() => api.updateTask(taskId, { description }))
+            }
             onDeleteTask={(id) => {
               deleteTask(id)
               if (id === selectedTaskId) setSelectedTaskId(null)

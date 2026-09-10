@@ -112,3 +112,36 @@
 .ai-reason { margin: 0; font-size: 13px; color: var(--text-faint); line-height: 1.5; }
 
 .ai-total { margin-right: auto; font-size: 13.5px; color: var(--text-dim); }
+
+/* หัวข้อที่กดกางรายละเอียดได้ — ต้องดูเหมือนหัวข้อเดิมทุกอย่าง ยกเว้นลูกศร */
+.ai-title.is-toggle {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  width: 100%;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.ai-caret { flex: none; color: var(--text-faint); transition: transform 0.12s ease; }
+.ai-caret.is-open { transform: rotate(180deg); }
+.ai-title.is-toggle:hover .ai-caret { color: var(--text-strong); }
+
+.ai-desc {
+  margin: 6px 0 0;
+  padding-left: 17px;
+  font-size: 12.5px;
+  line-height: 1.55;
+  color: var(--text-dim);
+  /* ขึ้นบรรทัดตามที่ AI เขียนมา */
+  white-space: pre-wrap;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ai-caret { transition: none; }
+}

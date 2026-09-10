@@ -26,6 +26,7 @@ type Props = {
   onSetPriority: (taskId: string, priority: PriorityId) => void
   onSetDue: (taskId: string, date: string | null) => void
   onSetCategory: (taskId: string, category: string | null) => void
+  onSetDescription: (taskId: string, description: string | null) => void
   onDeleteTask: (taskId: string) => void
   onAddMember: () => void
   /** เจ้าของโปรเจคเท่านั้นที่เพิ่มงานและจัดการสมาชิกได้ */
@@ -37,7 +38,8 @@ export function Board({
   project, members, query, filters, groupBy, selectedTaskId, currentMemberId,
   onClaimTask, onOpenTask,
   onSetSubtaskStatus, onAddTask, onChangeStatus, onToggleAssignee,
-  onSetPriority, onSetDue, onSetCategory, onDeleteTask, onAddMember, isOwner,
+  onSetPriority, onSetDue, onSetCategory, onSetDescription, onDeleteTask, onAddMember,
+  isOwner,
   onClearFilters,
 }: Props) {
   const visible = useMemo(() => {
@@ -133,6 +135,7 @@ export function Board({
               onSetPriority={(p) => onSetPriority(t.id, p)}
               onSetDue={(d) => onSetDue(t.id, d)}
               onSetCategory={(c) => onSetCategory(t.id, c)}
+              onSetDescription={(d) => onSetDescription(t.id, d)}
               onDelete={() => onDeleteTask(t.id)}
               onAddMember={onAddMember}
             />

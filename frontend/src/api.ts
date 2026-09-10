@@ -5,6 +5,8 @@ import type { Project, PriorityId, StatusId, Task } from "./types"
 
 export type SubtaskSuggestion = {
   title: string
+  /** ขอบเขตงานที่ AI เขียนให้ ไปลงช่อง Details ของการ์ด */
+  description: string
   category: string
   tags: string[]
   estimateHours: number
@@ -71,6 +73,7 @@ type ApiTask = {
   reviewUrl: string | null
   parentId: string | null
   title: string
+  description: string | null
   status: StatusId
   priority: PriorityId
   dueDate: string | null
@@ -103,6 +106,7 @@ const toTask = (t: ApiTask): Task => ({
   reviewUrl: t.reviewUrl,
   parentId: t.parentId,
   title: t.title,
+  description: t.description,
   status: t.status,
   assigneeIds: t.assigneeIds,
   dueDate: t.dueDate,
@@ -165,6 +169,7 @@ export async function removeProjectMember(projectId: string, memberId: string): 
 
 export type NewTask = {
   title: string
+  description?: string | null
   status?: StatusId
   priority?: PriorityId
   dueDate?: string | null
@@ -187,7 +192,9 @@ export async function createTask(projectId: string, task: NewTask): Promise<Task
 
 export async function updateTask(
   id: string,
-  patch: Partial<Pick<Task, "title" | "status" | "priority" | "dueDate" | "category">>,
+  patch: Partial<
+    Pick<Task, "title" | "description" | "status" | "priority" | "dueDate" | "category">
+  >,
 ): Promise<void> {
   const res = await fetch(`/api/tasks/${id}`, {
     method: "PATCH",
@@ -370,4 +377,37 @@ export async function getWebhookEvents(limit = 10): Promise<WebhookEvent[]> {
   const res = await fetch(`/api/github/events?limit=${limit}`)
   if (!res.ok) throw new ApiError(await readError(res), res.status)
   return res.json()
+}
+
+
+/* ---------- คอมเมนต์ใต้การ์ด ---------- */
+
+export type TaskComment = {
+  id: string
+  taskId: string
+  memberId: string | null
+  memberName: string
+  body: string
+  createdAt: string
+}
+
+export async function getComments(taskId: string): Promise<TaskComment[]> {
+  const res = await fetch(`/api/tasks/${taskId}/comments`)
+  if (!res.ok) throw new ApiError(await readError(res), res.status)
+  return res.json()
+}
+
+export async function addComment(taskId: string, body: string): Promise<TaskComment> {
+  const res = await fetch(`/api/tasks/${taskId}/comments`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ body }),
+  })
+  if (!res.ok) throw new ApiError(await readError(res), res.status)
+  return res.json()
+}
+
+export async function deleteComment(taskId: string, commentId: string): Promise<void> {
+  const res = await fetch(`/api/tasks/${taskId}/comments/${commentId}`, { method: "DELETE" })
+  if (!res.ok) throw new ApiError(await readError(res), res.status)
 }

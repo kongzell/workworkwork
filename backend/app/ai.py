@@ -29,13 +29,16 @@ RESPONSE_SCHEMA = {
                 "type": "object",
                 "properties": {
                     "title": {"type": "string"},
+                    "description": {"type": "string"},
                     "category": {"type": "string", "enum": CATEGORIES},
                     "tags": {"type": "array", "items": {"type": "string"}},
                     "estimateHours": {"type": "number"},
                     "complexity": {"type": "string", "enum": COMPLEXITIES},
                     "reason": {"type": "string"},
                 },
-                "required": ["title", "category", "tags", "estimateHours", "complexity"],
+                "required": [
+                    "title", "description", "category", "tags", "estimateHours", "complexity",
+                ],
             },
         },
     },
@@ -52,10 +55,16 @@ Break it into subtasks that can actually be picked up and checked off:
 1. Every subtask must be something you can tell is finished, e.g. "Build the Add to Cart button",
    "Write the stock deduction API", "Design the products table" — never something broad
    like "do the frontend"
-2. Write every subtask in English
-3. category must be one of: {categories}
+2. Answer in the SAME LANGUAGE as the request above — Thai request, Thai answer;
+   English request, English answer. This applies to summary, title, description and reason.
+   Keep technical terms in English either way: library names, endpoints, table and field
+   names, HTTP verbs. Write "เขียน endpoint POST /api/carts", never a translated path
+2b. description is 2-4 sentences: what has to be built, and what counts as done.
+   Be concrete — name the fields, endpoints, states or edge cases involved.
+   Do not repeat the title, and do not restate the complexity reason
+3. category must be one of: {categories} — these stay in English, they are fixed values
 4. tags are the skills/tools/languages the subtask actually needs, e.g. React, TypeScript,
-   PostgreSQL, REST API — give 1-4, never vague words like "coding" or "programming"
+   PostgreSQL, REST API — give 1-4, always in English, never vague words like "coding"
 5. estimateHours is what a mid-level developer would realistically spend (0.5-16)
 6. complexity: low = straightforward, medium = needs some design thinking,
    high = risky, unfamiliar, or touching many parts
@@ -71,24 +80,49 @@ MOCK = BreakdownResult(
     subtasks=[
         SubtaskSuggestion(
             title="Design the cart and cart_items tables",
+            description=(
+                "One cart row per user, one cart_items row per product in it.\n"
+                "Keep unit price on cart_items so old carts do not change when a "
+                "product is repriced.\n"
+                "Done when a cart survives logout and login."
+            ),
             category="Database", tags=["PostgreSQL", "SQLAlchemy"],
             estimate_hours=2, complexity="medium",
             reason="The relationship to the products table has to be settled up front",
         ),
         SubtaskSuggestion(
             title="Write the add-to-cart API",
+            description=(
+                "POST that takes a product id and a quantity.\n"
+                "Adding a product already in the cart raises the quantity instead of "
+                "creating a second row.\n"
+                "Reject quantities above the stock on hand with a 400."
+            ),
             category="Backend", tags=["FastAPI", "REST API"],
             estimate_hours=3, complexity="medium",
             reason="Has to handle duplicate items and insufficient stock",
         ),
         SubtaskSuggestion(
             title="Build the Add to Cart button",
+            description=(
+                "Button on the product card that calls the add-to-cart API.\n"
+                "Disable it while the request is running so a double click cannot "
+                "add twice.\n"
+                "Update the cart badge in the header on success."
+            ),
             category="Frontend", tags=["React", "TypeScript"],
             estimate_hours=1.5, complexity="low",
             reason="Straightforward UI work",
         ),
         SubtaskSuggestion(
             title="Write the stock deduction API for order confirmation",
+            description=(
+                "On confirm, deduct every item in the cart from stock inside one "
+                "transaction.\n"
+                "If any item is short, roll back the whole order and say which one.\n"
+                "Done when two people confirming the last item at the same time "
+                "leaves stock at zero, never negative."
+            ),
             category="Backend", tags=["FastAPI", "Transaction"],
             estimate_hours=4, complexity="high",
             reason="Must not let stock go negative under concurrent orders",

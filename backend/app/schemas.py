@@ -47,6 +47,7 @@ class MemberOut(ApiModel):
 
 class TaskCreate(ApiModel):
     title: str = Field(min_length=1)
+    description: str | None = None
     parent_id: str | None = None
     status: StatusId = "todo"
     priority: PriorityId = "none"
@@ -61,6 +62,7 @@ class TaskUpdate(ApiModel):
     """ทุกฟิลด์ไม่บังคับ — ส่งมาเฉพาะอันที่จะแก้"""
 
     title: str | None = Field(default=None, min_length=1)
+    description: str | None = None
     status: StatusId | None = None
     priority: PriorityId | None = None
     due_date: date | None = None
@@ -77,6 +79,8 @@ class TaskOut(ApiModel):
     number: int
     parent_id: str | None
     title: str
+    #: รายละเอียดงานที่เจ้าของเขียนไว้
+    description: str | None = None
     status: StatusId
     priority: PriorityId
     due_date: date | None
@@ -98,6 +102,20 @@ class TaskOut(ApiModel):
     branch: str | None = None
     #: ลิงก์ PR ล่าสุดที่อ้างถึงงานนี้
     review_url: str | None = None
+
+
+class CommentCreate(ApiModel):
+    body: str = Field(min_length=1, max_length=2000)
+
+
+class CommentOut(ApiModel):
+    id: str
+    task_id: str
+    member_id: str | None
+    #: เก็บชื่อไว้ตรงนี้เลย หน้าเว็บจะได้ไม่ต้องไปหาในรายชื่อสมาชิกอีกรอบ
+    member_name: str
+    body: str
+    created_at: datetime
 
 
 # ---------- projects ----------
@@ -134,6 +152,8 @@ class BreakdownRequest(ApiModel):
 
 class SubtaskSuggestion(ApiModel):
     title: str
+    #: ขอบเขตงานสั้น ๆ ที่ AI เขียนให้ ไปลงช่อง Details ของการ์ด
+    description: str = ""
     category: str
     tags: list[str] = Field(default_factory=list)
     estimate_hours: float

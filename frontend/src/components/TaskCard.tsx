@@ -1,9 +1,10 @@
+import { useState } from "react"
 import type { Member, PriorityId, StatusId, Task } from "../types"
 import {
   CATEGORIES, categoryColor, codeLink, COMPLEXITIES, PRIORITIES, STATUSES, taskKey,
-  taskPoints,
 } from "../types"
 import { Avatar } from "./Avatar"
+import { TaskComments } from "./TaskComments"
 import { Menu, MenuItem, MenuLabel } from "./Menu"
 import {
   IconCalendar, IconCheck, IconDots, IconFlag, IconGithub, IconHand, IconPencil, IconPlus,
@@ -37,6 +38,7 @@ type Props = {
   onSetPriority: (priority: PriorityId) => void
   onSetDue: (date: string | null) => void
   onSetCategory: (category: string | null) => void
+  onSetDescription: (description: string | null) => void
   onDelete: () => void
   onAddMember: () => void
 }
@@ -48,8 +50,18 @@ export function TaskCard({
   task, members, subtasks, taskPrefix, githubRepo, isOwner, currentMemberId, expanded,
   canClaim, onClaim, onOpen,
   onToggleSubtaskAssignee, onSetSubtaskStatus, onChangeStatus, onToggleAssignee,
-  onSetPriority, onSetDue, onSetCategory, onDelete, onAddMember,
+  onSetPriority, onSetDue, onSetCategory, onSetDescription, onDelete, onAddMember,
 }: Props) {
+  const [editingDesc, setEditingDesc] = useState(false)
+  const [descDraft, setDescDraft] = useState("")
+
+  /** เริ่มแก้รายละเอียด — คัดลอกค่าปัจจุบันลงช่องตอนนี้ทีเดียว
+   *  ไม่ต้องเก็บ draft ให้ตรงกับ prop ตลอดเวลา เพราะใช้แค่ตอนกำลังแก้
+   */
+  const startEditDesc = () => {
+    setDescDraft(task.description ?? "")
+    setEditingDesc(true)
+  }
   const assignees = members.filter((m) => task.assigneeIds.includes(m.id))
   const priority = PRIORITIES.find((p) => p.id === task.priority)!
   const hasPriority = task.priority !== "none"
@@ -310,35 +322,74 @@ export function TaskCard({
 
       {expanded && (
         <div className="card-detail">
-          <dl className="cd-fields">
-            <div>
-              <dt>Category</dt>
-              <dd style={task.category ? { color: categoryColor(task.category) } : undefined}>
-                {task.category ?? "—"}
-              </dd>
-            </div>
-            <div>
-              <dt>Estimated time</dt>
-              <dd>{task.estimateHours ? `${task.estimateHours} h` : "—"}</dd>
-            </div>
-            <div>
-              <dt>Complexity</dt>
-              <dd style={complexity ? { color: complexity.color } : undefined}>
-                {complexity ? `${complexity.label} · ${taskPoints(task)} pts` : "—"}
-              </dd>
-            </div>
-          </dl>
+          {/* หมวดหมู่ ทักษะ เวลา ความยาก โชว์เป็นป้ายอยู่บนหน้าการ์ดแล้ว
+              ตรงนี้จึงเอาไว้ลงรายละเอียดงานกับบันทึกของคนที่ลงมือทำแทน */}
+          <div className="cd-block">
+            <span className="cd-label">Details</span>
+            {editingDesc ? (
+              <>
+                <textarea
+                  className="cd-desc-edit"
+                  rows={4}
+                  autoFocus
+                  value={descDraft}
+                  placeholder="What has to be built, and what counts as done?"
+                  onChange={(e) => setDescDraft(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Escape") {
+                      setDescDraft(task.description ?? "")
+                      setEditingDesc(false)
+                    }
+                  }}
+                />
+                <div className="cd-desc-actions">
+                  <button
+                    type="button"
+                    className="tc-send"
+                    onClick={() => {
+                      const next = descDraft.trim()
+                      if (next !== (task.description ?? "")) onSetDescription(next || null)
+                      setEditingDesc(false)
+                    }}
+                  >
+                    Save
+                  </button>
+                  <button
+                    type="button"
+                    className="cd-desc-cancel"
+                    onClick={() => {
+                      setDescDraft(task.description ?? "")
+                      setEditingDesc(false)
+                    }}
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </>
+            ) : isOwner ? (
+              <button
+                type="button"
+                className="cd-desc-btn"
+                title="Click to edit"
+                onClick={startEditDesc}
+              >
+                <p className={`cd-desc${task.description ? "" : " is-empty"}`}>
+                  {task.description || "No details yet — click to write them"}
+                </p>
+              </button>
+            ) : (
+              <p className={`cd-desc${task.description ? "" : " is-empty"}`}>
+                {task.description || "No details yet"}
+              </p>
+            )}
+          </div>
 
-          {task.tags.length > 0 && (
-            <div className="cd-block">
-              <span className="cd-label">Skills needed</span>
-              <div className="cd-tags">
-                {task.tags.map((t) => (
-                  <span key={t} className="card-tag">{t}</span>
-                ))}
-              </div>
-            </div>
-          )}
+          <TaskComments
+            taskId={task.id}
+            currentMemberId={currentMemberId}
+            canWrite={isOwner || (currentMemberId !== null && task.assigneeIds.includes(currentMemberId))}
+            isOwner={isOwner}
+          />
 
           {subtasks.length > 0 && (
           <div className="cd-block">

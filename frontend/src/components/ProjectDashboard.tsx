@@ -17,9 +17,6 @@ const RANGES: { days: number; label: string }[] = [
   { days: 0, label: "All time" },
 ]
 
-/** ต้องมีสัปดาห์ที่ปิดงานจริงอย่างน้อยเท่านี้ ถึงจะทำนายวันเสร็จ */
-const MIN_WEEKS_FOR_ESTIMATE = 2
-
 const UNCATEGORIZED = "Uncategorized"
 
 /** เที่ยงคืนวันจันทร์ของสัปดาห์ที่วันนั้นอยู่ */
@@ -31,7 +28,6 @@ const weekStart = (d: Date): Date => {
 
 const dayOf = (d: Date) => new Date(d.getFullYear(), d.getMonth(), d.getDate())
 const shortDate = (d: Date) => `${d.getDate()}/${d.getMonth() + 1}`
-const daysSince = (iso: string) => Math.floor((Date.now() - new Date(iso).getTime()) / DAY)
 
 /** ส่งช้ากี่วัน — บวกคือช้า, null คือไม่ได้กำหนดวันส่ง */
 const lateDays = (task: Task): number | null => {
@@ -61,13 +57,7 @@ function buildPace(tasks: Task[]) {
     }
   }
 
-  // สัปดาห์ปัจจุบันยังไม่จบ ไม่เอามาเฉลี่ย ไม่งั้นเปิดดูวันจันทร์ทีไรความเร็วก็ตกทุกที
-  const past = buckets.slice(0, -1)
-  const avg = past.reduce((sum, b) => sum + b.points, 0) / past.length
-
-  // สัปดาห์ที่มีงานปิดจริงกี่สัปดาห์ — เฉลี่ยจากสัปดาห์เดียวแล้วทำนายวันเสร็จ
-  // จะได้ตัวเลขอย่าง "อีก 48 สัปดาห์" ซึ่งดูน่าเชื่อแต่ไม่มีความหมาย
-  return { buckets, avg, activeWeeks: past.filter((b) => b.points > 0).length }
+  return { buckets }
 }
 
 /* ---------- ใครปิดงานอะไรไปบ้าง ---------- */
@@ -104,10 +94,6 @@ function buildClosed(tasks: Task[], members: Member[], days: number) {
   return {
     rows,
     tasks: closed.length,
-    points: closed.reduce((sum, t) => sum + taskPoints(t), 0),
-    contributors: rows.filter((r) => r.count > 0).length,
-    // งานที่ปิดแล้วแต่ไม่มีใครถือ จะไม่โผล่ในแถวไหนเลย ต้องบอกไว้ไม่งั้นยอดไม่ตรง
-    orphans: closed.filter((t) => t.assigneeIds.length === 0).length,
     legend: [...new Set(closed.map((t) => t.category ?? UNCATEGORIZED))],
   }
 }
@@ -152,11 +138,6 @@ export function ProjectPanel({ project, members, onOpenMember, onOpenTask }: Pro
   const inReview = counts.find((c) => c.id === "review")?.n ?? 0
 
   const linked = tasks.filter((t) => t.branch !== null || t.reviewUrl !== null).length
-  const oldest = open
-    .filter((t) => t.createdAt !== null)
-    .map((t) => ({ task: t, age: daysSince(t.createdAt as string) }))
-    .sort((a, b) => b.age - a.age)[0]
-
   // ---- งานที่ยังค้าง แยกตามสาย ----
   // ไม่ต้อง memo — โปรเจคหนึ่งมีการ์ดหลักสิบใบ วนครั้งเดียวถูกกว่าการจำผลไว้
   const byCategory = groupByCategory(open)
@@ -195,8 +176,6 @@ export function ProjectPanel({ project, members, onOpenMember, onOpenTask }: Pro
       text: `${noDue} open card(s) have no due date — on-time numbers stay meaningless until they do`,
     })
 
-  const canEstimate = pace.activeWeeks >= MIN_WEEKS_FOR_ESTIMATE && pace.avg > 0
-  const weeksLeft = canEstimate ? Math.ceil(openPoints / pace.avg) : null
   const tallestWeek = Math.max(1, ...pace.buckets.map((b) => b.points))
   const topCloser = Math.max(1, ...closed.rows.map((r) => r.points))
 
@@ -233,23 +212,6 @@ export function ProjectPanel({ project, members, onOpenMember, onOpenTask }: Pro
             </div>
           ))}
         </div>
-        <p className="pd-note">
-          {canEstimate ? (
-            <>
-              Averaging {pace.avg.toFixed(1)} pts/week · {openPoints} points open →{" "}
-              <b>
-                about {weeksLeft} week{weeksLeft === 1 ? "" : "s"} left at this pace
-              </b>
-              . The current week is still running, so it is left out of the average.
-            </>
-          ) : (
-            <>
-              Only {pace.activeWeeks} of the last {WEEKS_SHOWN - 1} finished weeks had any
-              work closed — <b>too little history to estimate a finish date</b>. Close work in
-              at least {MIN_WEEKS_FOR_ESTIMATE} separate weeks first.
-            </>
-          )}
-        </p>
       </section>
 
       {/* ---------- งานไปกองตรงไหน ---------- */}
@@ -271,12 +233,6 @@ export function ProjectPanel({ project, members, onOpenMember, onOpenTask }: Pro
             </li>
           ))}
         </ul>
-        {oldest && (
-          <p className="pd-note">
-            Oldest open card is {taskKey(project.taskPrefix, oldest.task.number)}, opened{" "}
-            {oldest.age} day{oldest.age === 1 ? "" : "s"} ago
-          </p>
-        )}
       </section>
 
       {/* ---------- ใครปิดอะไรไปบ้าง ---------- */}
@@ -350,16 +306,6 @@ export function ProjectPanel({ project, members, onOpenMember, onOpenTask }: Pro
                 </span>
               ))}
             </div>
-
-            <p className="pd-note">
-              {closed.points} pts · {closed.tasks} task{closed.tasks === 1 ? "" : "s"} ·{" "}
-              <b>
-                {closed.contributors} of {members.length} people contributed
-              </b>
-              {closed.orphans > 0 && ` · ${closed.orphans} closed with nobody assigned`}
-              . Points, not card counts — otherwise closing easy work looks better than
-              closing hard work.
-            </p>
           </>
         )}
       </section>

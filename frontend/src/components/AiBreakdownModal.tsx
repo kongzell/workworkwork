@@ -2,7 +2,7 @@ import { useEffect, useState } from "react"
 import type { BreakdownResult, SubtaskSuggestion } from "../api"
 import { breakdownTask } from "../api"
 import { categoryColor, COMPLEXITIES } from "../types"
-import { IconCheck, IconClose, IconPlus, IconSparkle } from "./Icons"
+import { IconCheck, IconChevronDown, IconClose, IconPlus, IconSparkle } from "./Icons"
 import "./Modal.css"
 import "./Ai.css"
 
@@ -19,6 +19,9 @@ export function AiBreakdownModal({ projectName, onClose, onAdd }: Props) {
   const [error, setError] = useState<string | null>(null)
   const [result, setResult] = useState<BreakdownResult | null>(null)
   const [picked, setPicked] = useState<Set<number>>(new Set())
+  // ซ่อนรายละเอียดไว้ก่อน — ตอนเลือกงานดูแค่ชื่อกับความยากพอ
+  // ถ้ากางทุกใบ งานย่อย 5 ใบจะยาวจนต้องเลื่อนหาปุ่มยืนยัน
+  const [openDesc, setOpenDesc] = useState<Set<number>>(new Set())
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => e.key === "Escape" && onClose()
@@ -39,6 +42,7 @@ export function AiBreakdownModal({ projectName, onClose, onAdd }: Props) {
       const data = await breakdownTask(t, context)
       setResult(data)
       setPicked(new Set(data.subtasks.map((_, i) => i)))
+      setOpenDesc(new Set())
     } catch (e) {
       setError(e instanceof Error ? e.message : "The AI request failed")
     } finally {
@@ -130,7 +134,29 @@ export function AiBreakdownModal({ projectName, onClose, onAdd }: Props) {
                     </button>
 
                     <div className="ai-info">
-                      <div className="ai-title">{s.title}</div>
+                      {s.description ? (
+                        <button
+                          type="button"
+                          className="ai-title is-toggle"
+                          aria-expanded={openDesc.has(i)}
+                          title="Show what this task covers"
+                          onClick={() =>
+                            setOpenDesc((cur) => {
+                              const next = new Set(cur)
+                              if (!next.delete(i)) next.add(i)
+                              return next
+                            })
+                          }
+                        >
+                          <IconChevronDown
+                            size={12}
+                            className={openDesc.has(i) ? "ai-caret is-open" : "ai-caret"}
+                          />
+                          {s.title}
+                        </button>
+                      ) : (
+                        <div className="ai-title">{s.title}</div>
+                      )}
                       <div className="ai-chips">
                         <span className="ai-cat" style={{ color: categoryColor(s.category) }}>
                           {s.category}
@@ -147,6 +173,7 @@ export function AiBreakdownModal({ projectName, onClose, onAdd }: Props) {
                         </span>
                       </div>
                       {s.reason && <p className="ai-reason">{s.reason}</p>}
+                      {openDesc.has(i) && <p className="ai-desc">{s.description}</p>}
                     </div>
                   </li>
                 ))}

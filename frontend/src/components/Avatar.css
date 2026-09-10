@@ -10,3 +10,6 @@
   user-select: none;
   box-shadow: 0 0 0 2px var(--bg-app);
 }
+
+/* รูปจาก GitHub เป็นสี่เหลี่ยม ต้อง crop ให้เต็มวงกลมโดยไม่ยืดหน้าคน */
+.avatar-img { object-fit: cover; background: var(--bg-active); }

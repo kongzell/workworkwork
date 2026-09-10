@@ -4,8 +4,15 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.auth import require_member
 from app.db import get_session
-from app.models import Member, Project, Task, apply_status_change, project_members
-from app.schemas import TaskOut, TaskUpdate
+from app.models import (
+    Member,
+    Project,
+    Task,
+    TaskComment,
+    apply_status_change,
+    project_members,
+)
+from app.schemas import CommentCreate, CommentOut, TaskOut, TaskUpdate
 from app.serialize import task_out
 
 router = APIRouter(prefix="/api/tasks", tags=["tasks"])
@@ -160,3 +167,83 @@ async def unassign(
     await session.commit()
     await session.refresh(task)
     return task_out(task)
+
+
+# ---------- คอมเมนต์ใต้การ์ด ----------
+
+
+def _comment_out(row: TaskComment) -> CommentOut:
+    return CommentOut(
+        id=row.id,
+        task_id=row.task_id,
+        member_id=row.member_id,
+        # คนเขียนอาจถูกลบออกจากระบบไปแล้ว แต่คอมเมนต์ยังอยู่
+        member_name=row.member.name if row.member else "อดีตสมาชิก",
+        body=row.body,
+        created_at=row.created_at,
+    )
+
+
+@router.get("/{task_id}/comments", response_model=list[CommentOut])
+async def list_comments(
+    task_id: str,
+    me: Member = Depends(require_member),
+    session: AsyncSession = Depends(get_session),
+) -> list[CommentOut]:
+    """ทุกคนในโปรเจคอ่านคอมเมนต์ได้ — เจ้าของต้องอ่านเพื่อรู้ว่าลูกทีมติดอะไร"""
+    await _task_with_project(session, task_id, me)
+    rows = await session.scalars(
+        select(TaskComment)
+        .where(TaskComment.task_id == task_id)
+        .order_by(TaskComment.created_at)
+    )
+    return [_comment_out(r) for r in rows]
+
+
+@router.post("/{task_id}/comments", response_model=CommentOut, status_code=201)
+async def add_comment(
+    task_id: str,
+    payload: CommentCreate,
+    me: Member = Depends(require_member),
+    session: AsyncSession = Depends(get_session),
+) -> CommentOut:
+    """เขียนได้เฉพาะคนที่รับงานใบนี้ กับเจ้าของโปรเจค
+
+    คนอื่นในทีมอ่านได้แต่เขียนไม่ได้ เพราะคอมเมนต์ตรงนี้คือบันทึกของคนที่ลงมือทำ
+    ไม่ใช่กระดานคุยรวม ถ้าใครก็เขียนได้จะกลายเป็นที่ถกเถียงจนหาสาระไม่เจอ
+    """
+    task, project = await _task_with_project(session, task_id, me)
+
+    mine = any(m.id == me.id for m in task.assignees)
+    if not mine and project.owner_id != me.id:
+        raise HTTPException(403, "Only the people on this task and the project owner can comment")
+
+    body = payload.body.strip()
+    if not body:
+        raise HTTPException(400, "The comment is empty")
+
+    row = TaskComment(task_id=task_id, member_id=me.id, body=body)
+    session.add(row)
+    await session.commit()
+    await session.refresh(row, ["member"])
+    return _comment_out(row)
+
+
+@router.delete("/{task_id}/comments/{comment_id}", status_code=204)
+async def delete_comment(
+    task_id: str,
+    comment_id: str,
+    me: Member = Depends(require_member),
+    session: AsyncSession = Depends(get_session),
+) -> None:
+    """ลบได้เฉพาะคอมเมนต์ของตัวเอง — เจ้าของโปรเจคลบของใครก็ได้"""
+    _, project = await _task_with_project(session, task_id, me)
+
+    row = await session.get(TaskComment, comment_id)
+    if row is None or row.task_id != task_id:
+        raise HTTPException(404, "Comment not found")
+    if row.member_id != me.id and project.owner_id != me.id:
+        raise HTTPException(403, "You can only delete your own comment")
+
+    await session.delete(row)
+    await session.commit()

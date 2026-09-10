@@ -198,6 +198,7 @@ async def create_task(
             number=(highest or 0) + 1,
             parent_id=payload.parent_id,
             title=payload.title,
+            description=payload.description,
             status=payload.status,
             priority=payload.priority,
             due_date=payload.due_date,

@@ -131,6 +131,8 @@ class Task(Base):
         ForeignKey("tasks.id", ondelete="CASCADE"), nullable=True
     )
     title: Mapped[str] = mapped_column(Text)
+    #: รายละเอียดงาน — ขอบเขต เงื่อนไข หรือสิ่งที่ต้องส่งมอบ เจ้าของเป็นคนเขียน
+    description: Mapped[str | None] = mapped_column(Text, nullable=True)
     status: Mapped[str] = mapped_column(String(20), default="todo")
     priority: Mapped[str] = mapped_column(String(20), default="none")
     due_date: Mapped[date | None] = mapped_column(Date, nullable=True)
@@ -195,6 +197,26 @@ def apply_status_change(task: Task, new_status: str) -> None:
         task.completed_at = None
 
     task.status = new_status
+
+
+class TaskComment(Base):
+    """บันทึกสั้น ๆ ใต้การ์ด — คนที่รับงานเขียนว่าติดอะไร จะแก้ยังไง
+
+    แยกเป็นตารางต่างหากแทนที่จะต่อท้าย description เพราะต้องรู้ว่าใครเขียนและเมื่อไหร่
+    """
+
+    __tablename__ = "task_comments"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=_uuid)
+    task_id: Mapped[str] = mapped_column(ForeignKey("tasks.id", ondelete="CASCADE"))
+    #: null ได้เพื่อไม่ให้คอมเมนต์หายตามคนที่ถูกลบออกจากระบบ
+    member_id: Mapped[str | None] = mapped_column(
+        String(36), ForeignKey("members.id", ondelete="SET NULL"), nullable=True
+    )
+    body: Mapped[str] = mapped_column(Text)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now)
+
+    member: Mapped[Member | None] = relationship(lazy="selectin")
 
 
 class WebhookEvent(Base):

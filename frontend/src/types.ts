@@ -8,8 +8,10 @@ export type Member = {
   id: string
   name: string
   role: string
-  /** สีพื้นหลังของ avatar */
+  /** สีพื้นหลังของ avatar — ใช้เมื่อไม่มีรูปโปรไฟล์ */
   color: string
+  /** รูปโปรไฟล์จาก GitHub — null สำหรับคนที่เจ้าของสร้างเองด้วยมือ */
+  avatarUrl: string | null
 }
 
 export type Task = {
@@ -19,6 +21,8 @@ export type Task = {
   /** งานย่อยที่ AI แตกให้จะชี้กลับมาที่งานแม่ — งานแม่เท่านั้นที่ขึ้นบนบอร์ด */
   parentId: string | null
   title: string
+  /** รายละเอียดงานที่เจ้าของเขียนไว้ */
+  description: string | null
   status: StatusId
   /** id ของพนักงานที่ถูก assign (ดึงจาก members ของโปรเจค) */
   assigneeIds: string[]

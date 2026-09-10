@@ -1,0 +1,138 @@
+/* บันทึกใต้การ์ด — อยู่ในส่วนที่กางออกมาของ TaskCard */
+
+.tc-empty { margin: 0; font-size: 12.5px; color: var(--text-faint); line-height: 1.5; }
+
+.tc-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 7px; }
+
+.tc-row {
+  padding: 7px 9px;
+  border-left: 2px solid var(--border-strong);
+  border-radius: 0 8px 8px 0;
+  background: var(--bg-hover);
+}
+
+.tc-head { display: flex; align-items: baseline; gap: 7px; }
+
+.tc-who { font-size: 12px; font-weight: 600; color: var(--text-strong); }
+.tc-when { font-size: 11px; color: var(--text-faint); }
+
+.tc-del {
+  margin-left: auto;
+  display: inline-flex;
+  padding: 2px;
+  border: 0;
+  border-radius: 5px;
+  background: none;
+  color: var(--text-faint);
+  cursor: pointer;
+  /* ปุ่มลบไม่ต้องเด่น โผล่ชัดตอนเอาเมาส์ไปวางบนบันทึกก็พอ */
+  opacity: 0;
+}
+
+.tc-row:hover .tc-del { opacity: 1; }
+.tc-del:hover { background: rgba(229, 72, 77, 0.14); color: var(--danger); }
+
+.tc-body {
+  margin: 3px 0 0;
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--text);
+  /* ขึ้นบรรทัดใหม่ตามที่พิมพ์ และตัดคำยาว ๆ ไม่ให้ล้นการ์ด */
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+/* คอลัมน์บนบอร์ดแคบ ถ้าวางปุ่มข้างช่องพิมพ์จะเหลือที่พิมพ์แค่ไม่กี่ตัวอักษร */
+.tc-form { display: flex; flex-direction: column; gap: 6px; margin-top: 8px; }
+
+.tc-input {
+  flex: 1;
+  min-width: 0;
+  padding: 6px 8px;
+  border: 1px solid var(--border-strong);
+  border-radius: 8px;
+  background: var(--bg-app);
+  color: var(--text-strong);
+  font: inherit;
+  font-size: 13px;
+  line-height: 1.45;
+  resize: vertical;
+}
+
+.tc-input:focus { outline: none; border-color: var(--accent); }
+.tc-input::placeholder { color: var(--text-faint); }
+
+.tc-send {
+  align-self: flex-end;
+  padding: 6px 12px;
+  border: 0;
+  border-radius: 8px;
+  background: var(--accent);
+  color: var(--accent-ink);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.tc-send:hover:not(:disabled) { background: var(--accent-hover); }
+.tc-send:disabled { background: var(--bg-active); color: var(--text-faint); cursor: default; }
+
+.tc-error { margin: 6px 0 0; font-size: 12.5px; color: var(--danger); }
+
+/* ---------- รายละเอียดงาน ---------- */
+
+.cd-desc {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.55;
+  color: var(--text);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.cd-desc.is-empty { color: var(--text-faint); font-style: italic; }
+
+.cd-desc-edit {
+  width: 100%;
+  padding: 7px 9px;
+  border: 1px solid var(--border-strong);
+  border-radius: 8px;
+  background: var(--bg-app);
+  color: var(--text-strong);
+  font: inherit;
+  font-size: 13px;
+  line-height: 1.5;
+  resize: vertical;
+}
+
+.cd-desc-edit:focus { outline: none; border-color: var(--accent); }
+
+.cd-desc-btn {
+  display: block;
+  width: 100%;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: text;
+}
+
+.cd-desc-btn:hover .cd-desc { color: var(--text-strong); }
+
+.cd-desc-actions { display: flex; gap: 6px; margin-top: 6px; }
+
+.cd-desc-cancel {
+  padding: 6px 12px;
+  border: 1px solid var(--border-strong);
+  border-radius: 8px;
+  background: none;
+  color: var(--text-dim);
+  font: inherit;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.cd-desc-cancel:hover { background: var(--bg-hover); color: var(--text-strong); }
