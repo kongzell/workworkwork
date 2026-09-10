@@ -34,6 +34,7 @@ export function RightSidebar({
         <TeamPanel
           members={members}
           tasks={project.tasks}
+          ownerId={project.ownerId}
           onAddMember={onAddMember}
           onOpenMember={onOpenMember}
           isOwner={isOwner}
@@ -89,12 +90,15 @@ function ProjectStats({ project, onOpen }: { project: Project; onOpen: () => voi
 function TeamPanel({
   members,
   tasks,
+  ownerId,
   onAddMember,
   onOpenMember,
   isOwner,
 }: {
   members: Member[]
   tasks: Task[]
+  /** เจ้าของโปรเจค — คนละเรื่องกับ member.role ที่เป็นสายงาน */
+  ownerId: string | null
   onAddMember: () => void
   onOpenMember: (id: string) => void
   isOwner: boolean
@@ -132,7 +136,13 @@ function TeamPanel({
                 <div className="rs-team-top">
                   <Avatar member={member} size={22} />
                   <span className="rs-team-name">{member.name}</span>
-                  <span className="rs-team-role">{member.role}</span>
+                  {/* แถบข้างแคบ ใส่ทั้งป้ายและสายงานพร้อมกันแล้วชื่อโดนตัด
+                      เจ้าของเห็นป้าย Owner แทน ส่วนสายงานไปดูได้ในแดชบอร์ด */}
+                  {member.id === ownerId ? (
+                    <span className="owner-tag">Owner</span>
+                  ) : (
+                    <span className="rs-team-role">{member.role}</span>
+                  )}
                 </div>
                 <div className="rs-load">
                   <span className="rs-load-bar">

@@ -403,6 +403,7 @@ export default function App() {
           projectName={project.name}
           githubRepo={project.githubRepo}
           members={projectMembers}
+          ownerId={project.ownerId}
           available={availableMembers}
           onClose={() => setMemberModalOpen(false)}
           onAddExisting={addExistingMember}

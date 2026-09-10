@@ -168,7 +168,10 @@ export function MemberPanel({ project, members, memberId, onSelectMember, onOpen
     <div className="md-head">
         <Avatar member={member} size={40} />
         <div className="md-who">
-          <span className="md-name">{member.name}</span>
+          <span className="md-name">
+            {member.name}
+            {member.id === project.ownerId && <span className="owner-tag">Owner</span>}
+          </span>
           <span className="md-role">{member.role}</span>
         </div>
         <div className="md-range">

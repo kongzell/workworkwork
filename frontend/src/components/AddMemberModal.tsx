@@ -11,6 +11,8 @@ type Props = {
   githubRepo: string | null
   /** พนักงานที่อยู่ในโปรเจคนี้แล้ว */
   members: Member[]
+  /** เจ้าของโปรเจค — ถอดออกไม่ได้ */
+  ownerId: string | null
   /** พนักงานใน workspace ที่ยังไม่ได้อยู่ในโปรเจคนี้ */
   available: Member[]
   onClose: () => void
@@ -21,7 +23,8 @@ type Props = {
 }
 
 export function AddMemberModal({
-  projectName, githubRepo, members, available, onClose, onAddExisting, onRemove, onImported,
+  projectName, githubRepo, members, ownerId, available, onClose, onAddExisting, onRemove,
+  onImported,
 }: Props) {
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => e.key === "Escape" && onClose()
@@ -57,7 +60,10 @@ export function AddMemberModal({
                 <li key={m.id} className="member-row">
                   <Avatar member={m} size={30} />
                   <span className="member-info">
-                    <span className="member-name">{m.name}</span>
+                    <span className="member-name">
+                      {m.name}
+                      {m.id === ownerId && <span className="owner-tag">Owner</span>}
+                    </span>
                     <span className="member-role">{m.role}</span>
                   </span>
                   <button
