@@ -1,8 +1,10 @@
 import { useEffect, useState } from "react"
 import type { BreakdownResult, SubtaskSuggestion } from "../api"
 import { breakdownTask } from "../api"
-import { categoryColor, COMPLEXITIES } from "../types"
-import { IconCheck, IconChevronDown, IconClose, IconPlus, IconSparkle } from "./Icons"
+import { CATEGORIES, categoryColor, COMPLEXITIES } from "../types"
+import {
+  IconCheck, IconChevronDown, IconClose, IconPencil, IconPlus, IconSparkle,
+} from "./Icons"
 import "./Modal.css"
 import "./Ai.css"
 
@@ -22,6 +24,8 @@ export function AiBreakdownModal({ projectName, onClose, onAdd }: Props) {
   // ซ่อนรายละเอียดไว้ก่อน — ตอนเลือกงานดูแค่ชื่อกับความยากพอ
   // ถ้ากางทุกใบ งานย่อย 5 ใบจะยาวจนต้องเลื่อนหาปุ่มยืนยัน
   const [openDesc, setOpenDesc] = useState<Set<number>>(new Set())
+  /** ใบที่กำลังแก้อยู่ — แก้ได้ทีละใบ จะได้ไม่ต้องเดาว่าอันไหนบันทึกแล้ว */
+  const [editing, setEditing] = useState<number | null>(null)
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => e.key === "Escape" && onClose()
@@ -43,6 +47,7 @@ export function AiBreakdownModal({ projectName, onClose, onAdd }: Props) {
       setResult(data)
       setPicked(new Set(data.subtasks.map((_, i) => i)))
       setOpenDesc(new Set())
+      setEditing(null)
     } catch (e) {
       setError(e instanceof Error ? e.message : "The AI request failed")
     } finally {
@@ -57,6 +62,19 @@ export function AiBreakdownModal({ projectName, onClose, onAdd }: Props) {
       else next.add(i)
       return next
     })
+
+  /** แก้ข้อมูลของงานย่อยใบหนึ่ง — เก็บไว้ใน state ฝั่งนี้ ยังไม่ยิงไปที่ไหน
+   *  จะถูกบันทึกจริงตอนกด "Add to project" เท่านั้น
+   */
+  const patch = (index: number, change: Partial<SubtaskSuggestion>) =>
+    setResult((cur) =>
+      cur === null
+        ? cur
+        : {
+            ...cur,
+            subtasks: cur.subtasks.map((s, i) => (i === index ? { ...s, ...change } : s)),
+          },
+    )
 
   const chosen = result ? result.subtasks.filter((_, i) => picked.has(i)) : []
   const totalHours = chosen.reduce((sum, s) => sum + s.estimateHours, 0)
@@ -134,6 +152,14 @@ export function AiBreakdownModal({ projectName, onClose, onAdd }: Props) {
                     </button>
 
                     <div className="ai-info">
+                      {editing === i ? (
+                        <SubtaskForm
+                          value={s}
+                          onChange={(change) => patch(i, change)}
+                          onDone={() => setEditing(null)}
+                        />
+                      ) : (
+                      <>
                       {s.description ? (
                         <button
                           type="button"
@@ -174,7 +200,20 @@ export function AiBreakdownModal({ projectName, onClose, onAdd }: Props) {
                       </div>
                       {s.reason && <p className="ai-reason">{s.reason}</p>}
                       {openDesc.has(i) && <p className="ai-desc">{s.description}</p>}
+                      </>
+                      )}
                     </div>
+
+                    {editing !== i && (
+                      <button
+                        type="button"
+                        className="ai-edit"
+                        title="Edit this task before adding it"
+                        onClick={() => setEditing(i)}
+                      >
+                        <IconPencil size={13} />
+                      </button>
+                    )}
                   </li>
                 ))}
               </ul>
@@ -199,6 +238,86 @@ export function AiBreakdownModal({ projectName, onClose, onAdd }: Props) {
           </button>
         </footer>
       </div>
+    </div>
+  )
+}
+
+/** ฟอร์มแก้งานย่อยหนึ่งใบ ก่อนเอาเข้าบอร์ด
+ *
+ * ใช้ field ชุดเดียวกับฟอร์ม "เพิ่มงานด้วยมือ" บนบอร์ด จะได้ไม่ต้องเรียนรู้สองแบบ
+ */
+function SubtaskForm({
+  value,
+  onChange,
+  onDone,
+}: {
+  value: SubtaskSuggestion
+  onChange: (change: Partial<SubtaskSuggestion>) => void
+  onDone: () => void
+}) {
+  return (
+    <div className="ai-form" onKeyDown={(e) => e.key === "Escape" && onDone()}>
+      <input
+        className="ai-in ai-in-title"
+        value={value.title}
+        autoFocus
+        placeholder="Task name"
+        onChange={(e) => onChange({ title: e.target.value })}
+      />
+
+      <div className="ai-form-row">
+        <select
+          className="ai-in"
+          value={value.category}
+          onChange={(e) => onChange({ category: e.target.value })}
+        >
+          {CATEGORIES.map((c) => (
+            <option key={c.id} value={c.id}>{c.id}</option>
+          ))}
+        </select>
+
+        <select
+          className="ai-in"
+          value={value.complexity}
+          onChange={(e) =>
+            onChange({ complexity: e.target.value as SubtaskSuggestion["complexity"] })
+          }
+        >
+          {COMPLEXITIES.map((c) => (
+            <option key={c.id} value={c.id}>{c.label}</option>
+          ))}
+        </select>
+
+        <input
+          className="ai-in ai-in-hours"
+          type="number"
+          min={0}
+          step={0.5}
+          value={value.estimateHours}
+          placeholder="hrs"
+          onChange={(e) => onChange({ estimateHours: Number(e.target.value) || 0 })}
+        />
+      </div>
+
+      <input
+        className="ai-in"
+        value={value.tags.join(", ")}
+        placeholder="Skills needed, e.g. React, PostgreSQL"
+        // แยกด้วยจุลภาคหรือเว้นวรรคก็ได้ เหมือนฟอร์มเพิ่มงานบนบอร์ด
+        onChange={(e) =>
+          onChange({ tags: e.target.value.split(/[,\s]+/).map((t) => t.trim()).filter(Boolean) })
+        }
+      />
+
+      <textarea
+        className="ai-in ai-in-desc"
+        rows={3}
+        value={value.description}
+        placeholder="What has to be built, and what counts as done?"
+        onChange={(e) => onChange({ description: e.target.value })}
+      />
+
+      <button type="button" className="ai-done" onClick={onDone}>Done</button>
     </div>
   )
 }

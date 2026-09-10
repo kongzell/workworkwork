@@ -131,6 +131,33 @@ MOCK = BreakdownResult(
 )
 
 
+def _explain(status: int, body: str) -> str:
+    """แปลง error ของ Gemini เป็นข้อความที่คนอ่านรู้เรื่อง
+
+    ของเดิมโยน JSON ดิบขึ้นหน้าเว็บทั้งก้อน ซึ่งยาว อ่านไม่ออก และมักถูกตัดกลางประโยค
+    ผู้ใช้ต้องรู้แค่ว่า "เกิดอะไร" กับ "ทำยังไงต่อ"
+    """
+    if status == 429:
+        return "โควตา Gemini หมดแล้ว"
+    if status == 503:
+        return "ตอนนี้ Gemini มีคนใช้เยอะ ลองกดใหม่อีกครั้งใน 1-2 นาที"
+    if status in (401, 403):
+        return "GEMINI_API_KEY ใช้ไม่ได้หรือหมดอายุ — ขอ key ใหม่ที่ https://aistudio.google.com/apikey"
+    if status == 400:
+        return f"Gemini ไม่รับคำขอนี้ (400) — {_first_message(body)}"
+    return f"Gemini ตอบกลับ {status} — {_first_message(body)}"
+
+
+def _first_message(body: str) -> str:
+    """ดึงเฉพาะบรรทัด message จาก JSON ที่ Gemini ส่งมา ไม่เอาทั้งก้อน"""
+    try:
+        text = json.loads(body).get("error", {}).get("message", "")
+    except (ValueError, AttributeError):
+        text = body
+    text = " ".join(text.split())
+    return text[:160] if text else "ไม่มีรายละเอียดเพิ่มเติม"
+
+
 async def breakdown(title: str, context: str = "", count: int = 5) -> BreakdownResult:
     settings = get_settings()
 
@@ -172,8 +199,7 @@ async def breakdown(title: str, context: str = "", count: int = 5) -> BreakdownR
         raise HTTPException(502, f"Could not reach Gemini ({type(exc).__name__}): {exc}") from exc
 
     if res.status_code != 200:
-        detail = res.text[:300]
-        raise HTTPException(502, f"Gemini responded with {res.status_code}: {detail}")
+        raise HTTPException(502, _explain(res.status_code, res.text))
 
     try:
         text = res.json()["candidates"][0]["content"]["parts"][0]["text"]

@@ -45,3 +45,15 @@ services:
       # โดเมนเดียวกับ frontend อยู่แล้ว ไม่ต้องเปิด CORS ให้ใคร
       - key: CORS_ORIGIN
         sync: false
+
+      # แจ้งเตือนทางอีเมล — ไม่ตั้งก็ deploy ได้ แค่ไม่มีอีเมลส่งออก
+      # SMTP_PASSWORD คือ App Password 16 หลักของ Gmail ไม่ใช่รหัสผ่านปกติ
+      - key: SMTP_USER
+        sync: false
+      - key: SMTP_PASSWORD
+        sync: false
+      - key: MAIL_FROM_NAME
+        sync: false
+      # ใช้ทำลิงก์ในอีเมล ต้องเป็น URL ของ Render
+      - key: APP_URL
+        sync: false

@@ -5,7 +5,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.auth import require_member
 from app.db import get_session
 from app.models import Member
-from app.schemas import MemberCreate, MemberOut
+from app.schemas import MemberOut
 
 router = APIRouter(prefix="/api/members", tags=["members"])
 
@@ -18,15 +18,3 @@ async def list_members(
     rows = await session.scalars(select(Member).order_by(Member.created_at))
     return list(rows)
 
-
-@router.post("", response_model=MemberOut, status_code=201)
-async def create_member(
-    payload: MemberCreate,
-    _me: Member = Depends(require_member),
-    session: AsyncSession = Depends(get_session),
-) -> Member:
-    member = Member(name=payload.name, role=payload.role, color=payload.color)
-    session.add(member)
-    await session.commit()
-    await session.refresh(member)
-    return member

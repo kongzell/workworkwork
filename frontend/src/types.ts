@@ -163,18 +163,6 @@ export const ROLES = [
   "Testing",
 ]
 
-/** สีที่ให้เลือกตอนเพิ่มพนักงานใหม่ */
-export const MEMBER_COLORS = [
-  "#7b68ee",
-  "#e5484d",
-  "#f5a524",
-  "#22c55e",
-  "#3b82f6",
-  "#ec4899",
-  "#14b8a6",
-  "#a855f7",
-]
-
 export function initialsOf(name: string): string {
   const parts = name.trim().split(/\s+/).filter(Boolean)
   if (parts.length === 0) return "?"

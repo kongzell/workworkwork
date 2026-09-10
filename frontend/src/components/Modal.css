@@ -30,8 +30,8 @@
   border-bottom: 1px solid var(--border);
 }
 
-.modal-title { margin: 0; font-size: 17px; font-weight: 700; color: var(--text-strong); }
-.modal-sub { margin: 2px 0 0; font-size: 13.5px; color: var(--text-faint); }
+.modal-title { margin: 0; font-size: 19px; font-weight: 700; color: var(--text-strong); }
+.modal-sub { margin: 3px 0 0; font-size: 14.5px; color: var(--text-faint); }
 
 .modal-close {
   margin-left: auto;
@@ -51,15 +51,15 @@
 .modal-section { margin-top: 16px; }
 
 .modal-h3 {
-  margin: 0 0 8px;
-  font-size: 12.5px;
+  margin: 0 0 9px;
+  font-size: 13.5px;
   font-weight: 700;
   letter-spacing: 0.4px;
   text-transform: uppercase;
   color: var(--text-faint);
 }
 
-.modal-empty { margin: 0; font-size: 14px; color: var(--text-faint); }
+.modal-empty { margin: 0; font-size: 15px; color: var(--text-faint); }
 
 .member-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 4px; }
 
@@ -98,7 +98,30 @@
 
 .field-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
 .field { display: flex; flex-direction: column; gap: 5px; margin-bottom: 12px; }
-.field-label { font-size: 13px; color: var(--text-dim); }
+.field-label { font-size: 14px; color: var(--text-dim); }
+
+/* ช่องกรอกใน modal เดิมไม่มีสไตล์เลย ใช้ค่าเริ่มต้นของเบราว์เซอร์
+   ทำให้ดูไม่เข้ากับส่วนอื่นของหน้า */
+.field-input,
+.field select,
+.field textarea {
+  width: 100%;
+  padding: 8px 10px;
+  border: 1px solid var(--border-strong);
+  border-radius: 8px;
+  background: var(--bg-app);
+  color: var(--text-strong);
+  font: inherit;
+  font-size: 14.5px;
+  line-height: 1.5;
+}
+
+.field-input:focus,
+.field select:focus,
+.field textarea:focus { outline: none; border-color: var(--accent); }
+
+.field-input::placeholder,
+.field textarea::placeholder { color: var(--text-faint); }
 
 .color-row { display: flex; gap: 6px; flex-wrap: wrap; }
 
@@ -121,12 +144,40 @@
 
 .modal-hint {
   margin: 8px 0 0;
-  font-size: 13.5px;
+  font-size: 14.5px;
   line-height: 1.5;
   color: var(--text-dim);
 }
 
-.modal-error { margin: 4px 0 0; font-size: 13.5px; color: var(--danger); }
+/* กล่องแจ้งปัญหา — ทำเป็นกรอบมีพื้นหลัง ไม่ใช่ข้อความแดงลอย ๆ
+   เพราะข้อความจากบริการภายนอกมักยาวหลายบรรทัด อ่านยากถ้าไม่มีขอบ */
+.modal-error {
+  display: flex;
+  gap: 9px;
+  margin: 12px 0 0;
+  padding: 11px 13px;
+  border: 1px solid var(--danger);
+  border-radius: 10px;
+  background: rgba(229, 72, 77, 0.09);
+  color: var(--text);
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+.modal-error::before {
+  content: "!";
+  flex: none;
+  width: 19px;
+  height: 19px;
+  margin-top: 1px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: var(--danger);
+  color: #fff;
+  font-size: 13px;
+  font-weight: 700;
+}
 
 .modal-foot {
   display: flex;
@@ -146,12 +197,17 @@
   background: var(--bg-card);
   color: var(--text-strong);
   font: inherit;
-  font-size: 14px;
+  font-size: 15px;
   font-weight: 600;
   cursor: pointer;
 }
 
 .btn:hover { background: var(--bg-hover); }
 
+/* ปุ่มที่กดไม่ได้ต้องดูออกว่ากดไม่ได้ ไม่งั้นคนกดแล้วงงว่าทำไมไม่มีอะไรเกิดขึ้น */
+.btn:disabled { opacity: 0.4; cursor: default; }
+.btn:disabled:hover { background: var(--bg-card); }
+
 .btn-primary { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
+.btn-primary:disabled:hover { background: var(--accent); }
 .btn-primary:hover { background: var(--accent-hover); }

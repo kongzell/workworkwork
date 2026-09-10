@@ -40,6 +40,13 @@ services:
       GITHUB_REPO: ${GITHUB_REPO:-}
       GITHUB_WEBHOOK_SECRET: ${GITHUB_WEBHOOK_SECRET:-}
       SESSION_SECRET: ${SESSION_SECRET:-dev-secret-change-me}
+      # แจ้งเตือนทางอีเมล — ไม่ตั้งก็ใช้งานได้ปกติ แค่ไม่มีอีเมลส่งออก
+      SMTP_HOST: ${SMTP_HOST:-smtp.gmail.com}
+      SMTP_PORT: ${SMTP_PORT:-587}
+      SMTP_USER: ${SMTP_USER:-}
+      SMTP_PASSWORD: ${SMTP_PASSWORD:-}
+      MAIL_FROM_NAME: ${MAIL_FROM_NAME:-Follow-up}
+      APP_URL: ${APP_URL:-http://localhost:8081}
     ports:
       - "${API_PORT:-3000}:3000"
     depends_on:

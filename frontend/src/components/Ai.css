@@ -47,8 +47,8 @@
   border-radius: 9px;
   background: color-mix(in srgb, var(--prio-high) 12%, transparent);
   color: var(--text);
-  font-size: 13.5px;
-  line-height: 1.5;
+  font-size: 14.5px;
+  line-height: 1.6;
 }
 
 .ai-banner code {
@@ -64,7 +64,7 @@
 .ai-item {
   display: flex;
   gap: 11px;
-  padding: 11px 12px;
+  padding: 13px 14px;
   border: 1px solid var(--border);
   border-radius: 10px;
   opacity: 0.55;
@@ -91,14 +91,14 @@
 .ai-item.is-picked .ai-check { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
 
 .ai-info { min-width: 0; display: flex; flex-direction: column; gap: 6px; }
-.ai-title { font-size: 14.5px; font-weight: 600; color: var(--text-strong); line-height: 1.4; }
+.ai-title { font-size: 15.5px; font-weight: 600; color: var(--text-strong); line-height: 1.4; }
 
 .ai-chips { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
 
-.ai-cat { font-size: 12.5px; font-weight: 600; }
+.ai-cat { font-size: 13.5px; font-weight: 600; }
 
 .ai-tag {
-  font-size: 12px;
+  font-size: 13px;
   padding: 1px 7px;
   border: 1px solid var(--border-strong);
   border-radius: 999px;
@@ -106,12 +106,12 @@
 }
 
 .ai-est,
-.ai-cx { font-family: var(--mono); font-size: 12px; color: var(--text-faint); }
+.ai-cx { font-family: var(--mono); font-size: 13px; color: var(--text-faint); }
 .ai-cx { font-family: var(--sans); font-weight: 600; }
 
-.ai-reason { margin: 0; font-size: 13px; color: var(--text-faint); line-height: 1.5; }
+.ai-reason { margin: 0; font-size: 13.5px; color: var(--text-faint); line-height: 1.5; }
 
-.ai-total { margin-right: auto; font-size: 13.5px; color: var(--text-dim); }
+.ai-total { margin-right: auto; font-size: 14.5px; color: var(--text-dim); }
 
 /* หัวข้อที่กดกางรายละเอียดได้ — ต้องดูเหมือนหัวข้อเดิมทุกอย่าง ยกเว้นลูกศร */
 .ai-title.is-toggle {
@@ -135,8 +135,8 @@
 .ai-desc {
   margin: 6px 0 0;
   padding-left: 17px;
-  font-size: 12.5px;
-  line-height: 1.55;
+  font-size: 13.5px;
+  line-height: 1.6;
   color: var(--text-dim);
   /* ขึ้นบรรทัดตามที่ AI เขียนมา */
   white-space: pre-wrap;
@@ -145,3 +145,59 @@
 @media (prefers-reduced-motion: reduce) {
   .ai-caret { transition: none; }
 }
+
+/* ---------- แก้งานย่อยก่อนเอาเข้าบอร์ด ---------- */
+
+.ai-edit {
+  flex: none;
+  align-self: flex-start;
+  display: inline-flex;
+  padding: 4px;
+  border: 0;
+  border-radius: 6px;
+  background: none;
+  color: var(--text-faint);
+  cursor: pointer;
+  /* ไม่ต้องเด่น โผล่ชัดตอนเอาเมาส์ไปวางบนแถวก็พอ */
+  opacity: 0;
+}
+
+.ai-item:hover .ai-edit { opacity: 1; }
+.ai-edit:hover { background: var(--bg-hover); color: var(--text-strong); }
+
+.ai-form { display: flex; flex-direction: column; gap: 6px; width: 100%; min-width: 0; }
+.ai-form-row { display: flex; gap: 6px; }
+
+.ai-in {
+  min-width: 0;
+  padding: 6px 9px;
+  border: 1px solid var(--border-strong);
+  border-radius: 7px;
+  background: var(--bg-app);
+  color: var(--text-strong);
+  font: inherit;
+  font-size: 14px;
+}
+
+.ai-in:focus { outline: none; border-color: var(--accent); }
+.ai-in::placeholder { color: var(--text-faint); }
+
+.ai-in-title { font-size: 15.5px; font-weight: 600; }
+.ai-form-row .ai-in { flex: 1; }
+.ai-in-hours { flex: 0 0 74px !important; }
+.ai-in-desc { resize: vertical; line-height: 1.5; }
+
+.ai-done {
+  align-self: flex-end;
+  padding: 5px 14px;
+  border: 0;
+  border-radius: 7px;
+  background: var(--accent);
+  color: var(--accent-ink);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.ai-done:hover { background: var(--accent-hover); }

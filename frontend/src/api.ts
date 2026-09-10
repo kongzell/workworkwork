@@ -279,20 +279,6 @@ export async function getMembers(): Promise<ApiMember[]> {
   return res.json()
 }
 
-export async function createMemberApi(
-  name: string,
-  role: string,
-  color: string,
-): Promise<ApiMember> {
-  const res = await fetch("/api/members", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ name, role, color }),
-  })
-  if (!res.ok) throw new ApiError(await readError(res), res.status)
-  return res.json()
-}
-
 // ---------- ดึงรายชื่อจาก GitHub ----------
 
 export type ImportResult = {

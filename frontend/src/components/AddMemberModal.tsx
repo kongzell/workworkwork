@@ -1,9 +1,8 @@
 import { useEffect, useState } from "react"
 import { importRepoCollaborators } from "../api"
 import type { Member } from "../types"
-import { MEMBER_COLORS, ROLES } from "../types"
 import { Avatar } from "./Avatar"
-import { IconCheck, IconClose, IconPlus, IconTrash } from "./Icons"
+import { IconClose, IconPlus, IconTrash } from "./Icons"
 import "./Modal.css"
 
 type Props = {
@@ -17,36 +16,18 @@ type Props = {
   onClose: () => void
   onAddExisting: (memberId: string) => void
   onRemove: (memberId: string) => void
-  onCreate: (name: string, role: string, color: string) => void
   /** เรียกหลังดึงรายชื่อจาก GitHub เสร็จ เพื่อให้ App โหลดพนักงานใหม่ */
   onImported: () => void
 }
 
 export function AddMemberModal({
-  projectName, githubRepo, members, available, onClose, onAddExisting, onRemove, onCreate,
-  onImported,
+  projectName, githubRepo, members, available, onClose, onAddExisting, onRemove, onImported,
 }: Props) {
-  const [name, setName] = useState("")
-  const [role, setRole] = useState(ROLES[0])
-  const [color, setColor] = useState(MEMBER_COLORS[0])
-  const [error, setError] = useState<string | null>(null)
-
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => e.key === "Escape" && onClose()
     document.addEventListener("keydown", onKey)
     return () => document.removeEventListener("keydown", onKey)
   }, [onClose])
-
-  const submit = () => {
-    const n = name.trim()
-    if (!n) {
-      setError("Please enter a name")
-      return
-    }
-    onCreate(n, role, color)
-    setName("")
-    setError(null)
-  }
 
   return (
     <div className="modal-backdrop" onMouseDown={onClose}>
@@ -114,60 +95,10 @@ export function AddMemberModal({
 
           {githubRepo && <GithubImport repo={githubRepo} onImported={onImported} />}
 
-          <section className="modal-section">
-            <h3 className="modal-h3">Add member</h3>
-            <div className="field-grid">
-              <label className="field">
-                <span className="field-label">Name</span>
-                <input
-                  className="field-input"
-                  placeholder="Username"
-                  value={name}
-                  onChange={(e) => { setName(e.target.value); setError(null) }}
-                  onKeyDown={(e) => e.key === "Enter" && submit()}
-                />
-              </label>
-              <label className="field">
-                <span className="field-label">Specialization</span>
-                <select
-                  className="field-input"
-                  value={role}
-                  onChange={(e) => setRole(e.target.value)}
-                >
-                  {ROLES.map((r) => (
-                    <option key={r} value={r}>{r}</option>
-                  ))}
-                </select>
-              </label>
-            </div>
-
-            <div className="field">
-              <span className="field-label">Avatar Color</span>
-              <div className="color-row">
-                {MEMBER_COLORS.map((c) => (
-                  <button
-                    key={c}
-                    type="button"
-                    className={`color-dot${c === color ? " is-active" : ""}`}
-                    style={{ background: c }}
-                    title={c}
-                    onClick={() => setColor(c)}
-                  >
-                    {c === color && <IconCheck size={12} />}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {error && <p className="modal-error">{error}</p>}
-          </section>
         </div>
 
         <footer className="modal-foot">
-          <button type="button" className="btn" onClick={onClose}>Close</button>
-          <button type="button" className="btn btn-primary" onClick={submit}>
-            <IconPlus size={14} /> Add member
-          </button>
+          <button type="button" className="btn btn-primary" onClick={onClose}>Close</button>
         </footer>
       </div>
     </div>

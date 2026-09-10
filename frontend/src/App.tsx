@@ -5,7 +5,7 @@ import { loadTheme, saveTheme } from "./themes"
 import type { AuthStatus, SubtaskSuggestion } from "./api"
 import * as api from "./api"
 import {
-  createMemberApi, getAuthStatus, getMembers, logout, updateMyEmail, updateMyRole,
+  getAuthStatus, getMembers, logout, updateMyEmail, updateMyRole,
 } from "./api"
 import { AddMemberModal } from "./components/AddMemberModal"
 import { AddProjectModal } from "./components/AddProjectModal"
@@ -209,12 +209,6 @@ export default function App() {
     void sync(() => api.removeProjectMember(project.id, memberId))
   }
 
-  const createMember = async (name: string, role: string, color: string) => {
-    const saved = await createMemberApi(name, role, color)
-    await refreshMembers()
-    if (project) await sync(() => api.addProjectMember(project.id, saved.id))
-  }
-
   // ---------- โปรเจค ----------
 
   const addProject = (name: string, githubRepo: string | null = null, memberIds: string[] = []) => {
@@ -413,7 +407,6 @@ export default function App() {
           onClose={() => setMemberModalOpen(false)}
           onAddExisting={addExistingMember}
           onRemove={removeMember}
-          onCreate={createMember}
           onImported={refreshMembers}
         />
       )}

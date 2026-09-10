@@ -21,12 +21,6 @@ class ApiModel(BaseModel):
 
 # ---------- members ----------
 
-class MemberCreate(ApiModel):
-    name: str = Field(min_length=1, max_length=120)
-    role: str = Field(default="Member", max_length=60)
-    color: str = Field(default="#7b68ee", pattern=r"^#[0-9a-fA-F]{6}$")
-
-
 class MemberUpdate(ApiModel):
     """แก้ข้อมูลของตัวเอง — บทบาท สี และอีเมลรับแจ้งเตือน"""
 
