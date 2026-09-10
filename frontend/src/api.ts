@@ -68,7 +68,6 @@ type ApiTask = {
   needsRework: boolean
   reworkCount: number
   completedAt: string | null
-  createdAt: string | null
   branch: string | null
   reviewUrl: string | null
   parentId: string | null
@@ -77,7 +76,6 @@ type ApiTask = {
   status: StatusId
   priority: PriorityId
   dueDate: string | null
-  position: number
   assigneeIds: string[]
   category: string | null
   tags: string[]
@@ -101,7 +99,6 @@ const toTask = (t: ApiTask): Task => ({
   needsRework: t.needsRework,
   reworkCount: t.reworkCount,
   completedAt: t.completedAt,
-  createdAt: t.createdAt,
   branch: t.branch,
   reviewUrl: t.reviewUrl,
   parentId: t.parentId,

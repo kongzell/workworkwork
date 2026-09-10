@@ -530,6 +530,9 @@ def _summarize(event: str, payload: dict) -> list[tuple[str, str | None, str | N
     """แปลง payload ดิบให้เป็นบรรทัดสั้น ๆ ที่เอาไปแสดงได้เลย"""
     if event == "push":
         rows = []
+        # payload บางแบบไม่มี url ราย commit — ใช้ลิงก์ compare ของทั้ง push แทน
+        # จะได้กดจากแถบกิจกรรมไปดูโค้ดได้เสมอ
+        fallback = payload.get("compare")
         for commit in payload.get("commits", []):
             message = (commit.get("message") or "").split("\n")[0]
             rows.append(
@@ -537,7 +540,7 @@ def _summarize(event: str, payload: dict) -> list[tuple[str, str | None, str | N
                     message,
                     (commit.get("author") or {}).get("username")
                     or (commit.get("author") or {}).get("name"),
-                    commit.get("url"),
+                    commit.get("url") or fallback,
                     _read_ref(message),
                 )
             )

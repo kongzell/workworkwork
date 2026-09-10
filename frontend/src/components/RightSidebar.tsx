@@ -167,6 +167,12 @@ type FeedRow = {
   kind: "webhook" | "commit"
   text: string
   who: string | null
+  /** ลิงก์ไป commit หรือ PR บน GitHub — แปะไว้ที่ชื่อคนในแถว */
+  url: string | null
+  /** เวลาที่เกิดเหตุการณ์ (ISO) */
+  when: string | null
+  /** ชนิด event จาก GitHub เช่น push, pull_request */
+  event: string | null
   ref: string | null
   /** ข้อเสนอจาก AI — มีเฉพาะแถวที่มาจาก webhook และ commit ไม่ได้เขียนรหัสงาน */
   suggest: {
@@ -176,6 +182,29 @@ type FeedRow = {
     confidence: "high" | "medium" | "low"
     reason: string | null
   } | null
+}
+
+/** ชื่อ event ของ GitHub อ่านยาก แปลงเป็นคำสั้น ๆ ที่คนอ่านรู้เรื่อง */
+const EVENT_LABEL: Record<string, string> = {
+  push: "push",
+  pull_request: "PR",
+  ping: "ping",
+  commit: "commit",
+}
+
+const eventLabel = (event: string) => EVENT_LABEL[event] ?? event
+
+/** "5 นาทีที่แล้ว" — ของเก่ากว่าอาทิตย์หนึ่งบอกวันที่ไปเลย ใกล้กว่านั้นบอกระยะห่าง */
+function ago(iso: string): string {
+  const diff = Date.now() - new Date(iso).getTime()
+  const mins = Math.floor(diff / 60_000)
+  if (mins < 1) return "just now"
+  if (mins < 60) return `${mins}m ago`
+  const hours = Math.floor(mins / 60)
+  if (hours < 24) return `${hours}h ago`
+  const days = Math.floor(hours / 24)
+  if (days < 7) return `${days}d ago`
+  return new Date(iso).toLocaleDateString("th-TH", { day: "numeric", month: "short" })
 }
 
 /** โควตา GitHub แบบไม่ล็อกอินคือ 60 ครั้ง/ชม. ถามทุก 5 นาที = 12 ครั้ง/ชม. */
@@ -249,6 +278,9 @@ function GithubActivity({
       kind: "webhook" as const,
       text: e.summary,
       who: e.actor,
+      url: e.url,
+      when: e.receivedAt,
+      event: e.event,
       ref: e.taskRef,
       suggest:
         e.suggestedTaskId && e.suggestedTaskKey
@@ -266,6 +298,9 @@ function GithubActivity({
       kind: "commit" as const,
       text: c.message,
       who: c.author,
+      url: c.url,
+      when: c.date,
+      event: "commit",
       ref: c.taskRef,
       suggest: null,
     })),
@@ -295,7 +330,16 @@ function GithubActivity({
             <div className="rs-feed-body">
               <span className="rs-feed-text">{r.text}</span>
               <span className="rs-feed-meta">
-                {r.who ?? "unknown"}
+                {r.event && <span className="rs-kind">{eventLabel(r.event)}</span>}
+                {r.url ? (
+                  <a className="rs-who" href={r.url} target="_blank" rel="noreferrer"
+                    title="Open on GitHub">
+                    {r.who ?? "unknown"}
+                  </a>
+                ) : (
+                  <span className="rs-who">{r.who ?? "unknown"}</span>
+                )}
+                {r.when && <span className="rs-when">{ago(r.when)}</span>}
                 {r.ref && (
                   <button type="button" className="rs-ref" onClick={() => onOpenTaskRef(r.ref as string)}>
                     {r.ref}

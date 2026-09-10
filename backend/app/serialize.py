@@ -21,7 +21,6 @@ def task_out(task: Task) -> TaskOut:
         needs_rework=task.needs_rework,
         rework_count=task.rework_count,
         completed_at=task.completed_at,
-        created_at=task.created_at,
         branch=task.branch,
         review_url=task.review_url,
     )

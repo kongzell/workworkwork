@@ -38,8 +38,6 @@ export type Task = {
   reworkCount: number
   /** เวลาที่ปิดงาน (ISO) — null ถ้ายังไม่เสร็จ */
   completedAt: string | null
-  /** เวลาที่สร้างการ์ด (ISO) */
-  createdAt: string | null
   /** branch ล่าสุดที่ commit ถึงงานนี้ */
   branch: string | null
   /** ลิงก์ PR ล่าสุดที่อ้างถึงงานนี้ */

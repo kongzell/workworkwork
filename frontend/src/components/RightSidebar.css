@@ -319,3 +319,23 @@
 .rs-panel-btn { cursor: pointer; }
 .rs-panel-btn:hover { border-color: var(--border-strong); }
 .rs-panel-btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+/* ---------- แถวใน GitHub Activity ---------- */
+
+/* ป้ายชนิด event — บอกว่ามาจาก push หรือ PR โดยไม่ต้องอ่านข้อความทั้งบรรทัด */
+.rs-kind {
+  flex: none;
+  padding: 0 5px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  font-family: var(--mono);
+  font-size: 9.5px;
+  color: var(--text-faint);
+  text-transform: uppercase;
+}
+
+/* ชื่อคนเป็นลิงก์ไป commit/PR บน GitHub */
+.rs-who { color: var(--text-faint); text-decoration: none; }
+a.rs-who:hover { color: var(--accent-text); text-decoration: underline; }
+
+.rs-when { flex: none; color: var(--text-faint); white-space: nowrap; }
