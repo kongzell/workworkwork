@@ -8,8 +8,8 @@
 # ถ้าแยก frontend/backend คนละโดเมน เบราว์เซอร์จะไม่ส่ง cookie = ล็อกอินไม่ติด
 #
 # รันในเครื่องเพื่อทดสอบก่อน deploy:
-#   docker build -t follow-up-allinone .
-#   docker run --rm -p 3000:3000 -e DATABASE_URL=... follow-up-allinone
+#   docker build -t 3work-allinone .
+#   docker run --rm -p 3000:3000 -e DATABASE_URL=... 3work-allinone
 
 # ---------- build หน้าเว็บ ----------
 FROM node:24-alpine AS web

@@ -63,7 +63,7 @@ def _footer(project: Project) -> str:
     return (
         f"\n\nเปิดบอร์ด: {url}\n"
         f"\n--\n"
-        f"อีเมลนี้ส่งอัตโนมัติจากระบบ Follow-up ({project.name})\n"
+        f"อีเมลนี้ส่งอัตโนมัติจากระบบ 3work ({project.name})\n"
         f"ไม่อยากรับแล้ว ลบอีเมลออกจากเมนูโปรไฟล์ในเว็บได้เลย"
     )
 

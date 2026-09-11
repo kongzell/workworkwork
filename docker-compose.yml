@@ -43,7 +43,7 @@ services:
       # แจ้งเตือนทางอีเมล — ไม่ตั้งก็ใช้งานได้ปกติ แค่ไม่มีอีเมลส่งออก
       BREVO_API_KEY: ${BREVO_API_KEY:-}
       MAIL_FROM: ${MAIL_FROM:-}
-      MAIL_FROM_NAME: ${MAIL_FROM_NAME:-Follow-up}
+      MAIL_FROM_NAME: ${MAIL_FROM_NAME:-3work}
       APP_URL: ${APP_URL:-http://localhost:8081}
     ports:
       - "${API_PORT:-3000}:3000"

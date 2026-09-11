@@ -1,6 +1,6 @@
 services:
   - type: web
-    name: follow-up
+    name: 3work
     runtime: docker
     dockerfilePath: ./Dockerfile
     plan: free

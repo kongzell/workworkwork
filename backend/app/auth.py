@@ -12,12 +12,12 @@ from app.config import get_settings
 from app.db import get_session
 from app.models import Member
 
-COOKIE_NAME = "followup_session"
+COOKIE_NAME = "3work_session"
 MAX_AGE = 60 * 60 * 24 * 14  # 14 วัน
 
 
 def _serializer() -> URLSafeSerializer:
-    return URLSafeSerializer(get_settings().session_secret, salt="followup-session")
+    return URLSafeSerializer(get_settings().session_secret, salt="3work-session")
 
 
 def make_cookie(member_id: str) -> str:

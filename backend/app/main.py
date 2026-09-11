@@ -21,7 +21,7 @@ logging.getLogger("httpx").setLevel(logging.WARNING)
 
 # docs วางไว้ใต้ /api เพื่อให้ผ่าน proxy ของ vite (dev) และ nginx (prod) ได้เหมือน endpoint อื่น
 app = FastAPI(
-    title="follow-up api",
+    title="3work api",
     docs_url="/api/docs",
     redoc_url=None,
     openapi_url="/api/openapi.json",
@@ -52,7 +52,7 @@ class Health(BaseModel):
 
 @app.get("/api/health")
 def health() -> Health:
-    return Health(ok=True, service="follow-up api", time=datetime.now(UTC))
+    return Health(ok=True, service="3work api", time=datetime.now(UTC))
 
 
 # ---------- หน้าเว็บ ----------

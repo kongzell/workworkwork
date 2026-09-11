@@ -46,7 +46,7 @@ class Settings(BaseSettings):
     #: อีเมลผู้ส่ง — ต้องยืนยันไว้ใน Brevo ก่อน ไม่งั้นจะถูกปฏิเสธ
     mail_from: str = ""
     #: ชื่อที่ผู้รับเห็นคู่กับอีเมลผู้ส่ง
-    mail_from_name: str = "Follow-up"
+    mail_from_name: str = "3work"
     #: URL ของเว็บ ใช้ทำลิงก์ในอีเมล
     app_url: str = "http://localhost:8081"
 

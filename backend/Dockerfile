@@ -1,7 +1,7 @@
 # syntax=docker/dockerfile:1
 #
 # build context = root ของ repo (ให้ path เหมือนเดิมกับตอนเป็น npm workspaces)
-#   docker build -f backend/Dockerfile -t follow-up-api .
+#   docker build -f backend/Dockerfile -t 3work-api .
 
 FROM python:3.13-slim AS base
 WORKDIR /app

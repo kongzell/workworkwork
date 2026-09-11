@@ -1,7 +1,7 @@
 # syntax=docker/dockerfile:1
 #
 # build context = root ของ repo (เพราะเป็น npm workspaces)
-#   docker build -f frontend/Dockerfile -t follow-up-web .
+#   docker build -f frontend/Dockerfile -t 3work-web .
 #
 # หมายเหตุ: lockfile ที่ npm ci ใช้คือ package-lock.json ที่ root เท่านั้น
 

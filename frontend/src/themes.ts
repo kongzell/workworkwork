@@ -15,7 +15,7 @@ export const THEMES: Theme[] = [
   { id: "sunset", name: "Sunset", swatch: ["#191316", "#2a2124", "#f97316"] },
 ]
 
-const KEY = "followup-theme"
+const KEY = "3work-theme"
 const isTheme = (v: string | null): v is ThemeId => THEMES.some((t) => t.id === v)
 
 export function loadTheme(): ThemeId {
