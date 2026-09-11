@@ -118,8 +118,11 @@ export default function App() {
 
   // null เมื่อยังไม่มีโปรเจคสักใบ — หน้าจอจะแสดง empty state แทน
   const project = projects.find((p) => p.id === activeProjectId) ?? projects[0] ?? null
-  /** เจ้าของโปรเจคที่เปิดอยู่ — เพิ่มงาน จัดการสมาชิก ลบโปรเจค ได้คนเดียว */
-  const isOwner = project !== null && project.ownerId === auth?.member?.id
+  const me = auth?.member?.id ?? null
+  /** เจ้าของโปรเจคที่เปิดอยู่ — ลบโปรเจคกับตั้ง admin ได้คนเดียว */
+  const isOwner = project !== null && me !== null && project.ownerId === me
+  /** เจ้าของหรือ admin — เพิ่มงาน มอบหมาย จัดการสมาชิก แตกงานด้วย AI */
+  const canManage = isOwner || (project !== null && me !== null && project.adminIds.includes(me))
 
   const projectMembers = useMemo(
     () => (project ? allMembers.filter((m) => project.memberIds.includes(m.id)) : []),
@@ -333,7 +336,7 @@ export default function App() {
               setFilters({ assigneeId: null, priority: null })
               setQuery("")
             }}
-            isOwner={isOwner}
+            canManage={canManage}
           />
         )}
       </main>
@@ -350,11 +353,11 @@ export default function App() {
             setSelectedTaskId(null)
             setDashTab("member")
           }}
-          isOwner={isOwner}
+          canManage={canManage}
         />
       </div>
 
-      {isOwner && (
+      {canManage && (
         <button
           type="button"
           className="ai-fab"
@@ -405,10 +408,13 @@ export default function App() {
           githubRepo={project.githubRepo}
           members={projectMembers}
           ownerId={project.ownerId}
+          adminIds={project.adminIds}
+          isOwner={isOwner}
           available={availableMembers}
           onClose={() => setMemberModalOpen(false)}
           onAddExisting={addExistingMember}
           onRemove={removeMember}
+          onSetRole={(id, role) => void sync(() => api.setProjectMemberRole(project.id, id, role))}
           onImported={refreshMembers}
         />
       )}

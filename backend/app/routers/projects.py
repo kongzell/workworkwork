@@ -1,7 +1,7 @@
 import re
 
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException
-from sqlalchemy import delete, func, select
+from sqlalchemy import delete, func, select, update
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -9,7 +9,14 @@ from app import mailer, notify
 from app.auth import require_member
 from app.db import get_session
 from app.models import Member, Project, Task, project_members, task_assignees
-from app.schemas import ProjectCreate, ProjectOut, ProjectUpdate, TaskCreate, TaskOut
+from app.schemas import (
+    MemberRoleUpdate,
+    ProjectCreate,
+    ProjectOut,
+    ProjectUpdate,
+    TaskCreate,
+    TaskOut,
+)
 from app.serialize import project_out, task_out
 
 router = APIRouter(prefix="/api/projects", tags=["projects"])
@@ -43,10 +50,18 @@ async def _get_project(session: AsyncSession, project_id: str, me: Member) -> Pr
 
 
 async def _get_owned_project(session: AsyncSession, project_id: str, me: Member) -> Project:
-    """โปรเจคที่ me เป็นเจ้าของ — ใช้กับงานที่กระทบทั้งโปรเจค เช่น ลบ เปลี่ยนชื่อ จัดการสมาชิก"""
+    """โปรเจคที่ me เป็นเจ้าของจริง ๆ — เฉพาะเรื่องที่ admin ก็ทำไม่ได้: ลบโปรเจค ตั้ง admin"""
     project = await _get_project(session, project_id, me)
     if project.owner_id != me.id:
         raise HTTPException(403, "Only the project owner can do this")
+    return project
+
+
+async def _get_managed_project(session: AsyncSession, project_id: str, me: Member) -> Project:
+    """โปรเจคที่ me เป็นเจ้าของหรือ admin — งานวางแผนทั่วไป: สร้างงาน แก้ชื่อ จัดการสมาชิก"""
+    project = await _get_project(session, project_id, me)
+    if not project.can_manage(me.id):
+        raise HTTPException(403, "Only the project owner or an admin can do this")
     return project
 
 
@@ -92,7 +107,7 @@ async def update_project(
     me: Member = Depends(require_member),
     session: AsyncSession = Depends(get_session),
 ) -> ProjectOut:
-    project = await _get_owned_project(session, project_id, me)
+    project = await _get_managed_project(session, project_id, me)
     data = payload.model_dump(exclude_unset=True)
     for field, value in data.items():
         setattr(project, field, value)
@@ -114,6 +129,36 @@ async def delete_project(
 
 # ---------- พนักงานในโปรเจค ----------
 
+
+@router.patch("/{project_id}/members/{member_id}", status_code=204)
+async def set_member_role(
+    project_id: str,
+    member_id: str,
+    payload: MemberRoleUpdate,
+    me: Member = Depends(require_member),
+    session: AsyncSession = Depends(get_session),
+) -> None:
+    """ตั้งหรือถอด admin — เจ้าของเท่านั้น
+
+    admin ตั้ง admin คนอื่นไม่ได้ ไม่งั้นสิทธิ์จะกระจายจนเจ้าของคุมไม่อยู่
+    เจ้าของเองไม่มี role เพราะสิทธิ์มาจาก owner_id อยู่แล้ว
+    """
+    project = await _get_owned_project(session, project_id, me)
+    if member_id == project.owner_id:
+        raise HTTPException(400, "The owner already has every permission")
+    if member_id not in {m.id for m in project.members}:
+        raise HTTPException(404, "That person is not in this project")
+
+    await session.execute(
+        update(project_members)
+        .where(
+            project_members.c.project_id == project_id,
+            project_members.c.member_id == member_id,
+        )
+        .values(role=payload.role)
+    )
+    await session.commit()
+
 @router.post("/{project_id}/members/{member_id}", status_code=204)
 async def add_member(
     project_id: str,
@@ -121,7 +166,7 @@ async def add_member(
     me: Member = Depends(require_member),
     session: AsyncSession = Depends(get_session),
 ) -> None:
-    project = await _get_owned_project(session, project_id, me)
+    project = await _get_managed_project(session, project_id, me)
     member = await session.get(Member, member_id)
     if member is None:
         raise HTTPException(404, f"Member {member_id} not found")
@@ -138,7 +183,7 @@ async def remove_member(
     session: AsyncSession = Depends(get_session),
 ) -> None:
     """เอาออกจากโปรเจค + ถอด assign ออกจากทุกงานของโปรเจคนี้ (งานโปรเจคอื่นไม่แตะ)"""
-    project = await _get_owned_project(session, project_id, me)
+    project = await _get_managed_project(session, project_id, me)
     if member_id == project.owner_id:
         raise HTTPException(400, "The project owner cannot be removed")
 
@@ -180,8 +225,8 @@ async def create_task(
     me: Member = Depends(require_member),
     session: AsyncSession = Depends(get_session),
 ) -> TaskOut:
-    """เฉพาะเจ้าของโปรเจคที่เพิ่มงานได้ — สมาชิกรับงานและอัปเดตสถานะได้อย่างเดียว"""
-    project = await _get_owned_project(session, project_id, me)
+    """เจ้าของหรือ admin เพิ่มงานได้ — สมาชิกรับงานและอัปเดตสถานะได้อย่างเดียว"""
+    project = await _get_managed_project(session, project_id, me)
 
     # วางต่อท้ายคอลัมน์ที่ระบุ
     last = await session.scalar(

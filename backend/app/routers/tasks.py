@@ -72,7 +72,7 @@ async def update_task(
     data = payload.model_dump(exclude_unset=True)
 
     # สมาชิกย้ายคอลัมน์งานที่ตัวเองทำได้ แต่เปลี่ยนชื่อ ความสำคัญ หมวดหมู่ ไม่ได้
-    if project.owner_id != me.id:
+    if not project.can_manage(me.id):
         blocked = sorted(set(data) - MEMBER_EDITABLE)
         if blocked:
             raise HTTPException(
@@ -81,7 +81,7 @@ async def update_task(
         # ปิดงานคือการตรวจรับ ซึ่งเป็นหน้าที่เจ้าของ สมาชิกส่งได้แค่ถึงรอตรวจ
         if data.get("status") == "complete":
             raise HTTPException(
-                403, "You can send work to review, but closing a task is up to the project owner"
+                403, "You can send work to review, but closing a task is up to the owner or an admin"
             )
 
     # ย้ายคอลัมน์แล้วไม่ได้สั่งลำดับมาด้วย -> ต่อท้ายคอลัมน์ปลายทาง
@@ -112,8 +112,8 @@ async def delete_task(
     session: AsyncSession = Depends(get_session),
 ) -> None:
     task, project = await _task_with_project(session, task_id, me)
-    if project.owner_id != me.id:
-        raise HTTPException(403, "Only the project owner can delete a task")
+    if not project.can_manage(me.id):
+        raise HTTPException(403, "Only the project owner or an admin can delete a task")
     await session.delete(task)
     await session.commit()
 
@@ -129,8 +129,8 @@ async def assign(
     task, project = await _task_with_project(session, task_id, me)
 
     # สมาชิกรับงานเข้าตัวเองได้ แต่มอบหมายให้คนอื่นเป็นเรื่องของเจ้าของ
-    if project.owner_id != me.id and member_id != me.id:
-        raise HTTPException(403, "Only the project owner can assign work to someone else")
+    if not project.can_manage(me.id) and member_id != me.id:
+        raise HTTPException(403, "Only the project owner or an admin can assign work to someone else")
 
     member = await session.get(Member, member_id)
     if member is None:
@@ -171,8 +171,8 @@ async def unassign(
     session: AsyncSession = Depends(get_session),
 ) -> TaskOut:
     task, project = await _task_with_project(session, task_id, me)
-    if project.owner_id != me.id and member_id != me.id:
-        raise HTTPException(403, "Only the project owner can unassign someone else")
+    if not project.can_manage(me.id) and member_id != me.id:
+        raise HTTPException(403, "Only the project owner or an admin can unassign someone else")
 
     task.assignees = [m for m in task.assignees if m.id != member_id]
     await _park_if_unclaimed(session, task)
@@ -227,7 +227,7 @@ async def add_comment(
     task, project = await _task_with_project(session, task_id, me)
 
     mine = any(m.id == me.id for m in task.assignees)
-    if not mine and project.owner_id != me.id:
+    if not mine and not project.can_manage(me.id):
         raise HTTPException(403, "Only the people on this task and the project owner can comment")
 
     body = payload.body.strip()
@@ -254,7 +254,7 @@ async def delete_comment(
     row = await session.get(TaskComment, comment_id)
     if row is None or row.task_id != task_id:
         raise HTTPException(404, "Comment not found")
-    if row.member_id != me.id and project.owner_id != me.id:
+    if row.member_id != me.id and not project.can_manage(me.id):
         raise HTTPException(403, "You can only delete your own comment")
 
     await session.delete(row)

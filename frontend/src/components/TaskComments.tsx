@@ -11,7 +11,7 @@ type Props = {
   /** เขียนคอมเมนต์ได้ไหม — คนที่รับงานใบนี้ กับเจ้าของโปรเจคเท่านั้น */
   canWrite: boolean
   /** เจ้าของโปรเจคลบคอมเมนต์ของใครก็ได้ */
-  isOwner: boolean
+  canManage: boolean
 }
 
 const fmtWhen = (iso: string) =>
@@ -27,7 +27,7 @@ const fmtWhen = (iso: string) =>
  * ไม่ได้ดึงมาพร้อมบอร์ดทั้งกระดาน เพราะการ์ดส่วนใหญ่ไม่ถูกกางดู
  * ดึงมาหมดจะเสียเวลาโหลดกับข้อมูลที่ไม่มีใครอ่าน
  */
-export function TaskComments({ taskId, currentMemberId, canWrite, isOwner }: Props) {
+export function TaskComments({ taskId, currentMemberId, canWrite, canManage }: Props) {
   const [rows, setRows] = useState<TaskComment[] | null>(null)
   const [draft, setDraft] = useState("")
   const [busy, setBusy] = useState(false)
@@ -85,7 +85,7 @@ export function TaskComments({ taskId, currentMemberId, canWrite, isOwner }: Pro
               <div className="tc-head">
                 <span className="tc-who">{c.memberName}</span>
                 <span className="tc-when">{fmtWhen(c.createdAt)}</span>
-                {(isOwner || c.memberId === currentMemberId) && (
+                {(canManage || c.memberId === currentMemberId) && (
                   <button
                     type="button"
                     className="tc-del"

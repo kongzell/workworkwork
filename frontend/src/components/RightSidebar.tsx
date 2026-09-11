@@ -15,7 +15,7 @@ type Props = {
   onOpenProject: () => void
   onOpenMember: (id: string) => void
   /** เจ้าของโปรเจคเท่านั้นที่เพิ่มพนักงานได้ */
-  isOwner: boolean
+  canManage: boolean
 }
 
 export function RightSidebar({
@@ -25,7 +25,7 @@ export function RightSidebar({
   onAddMember,
   onOpenMember,
   onOpenProject,
-  isOwner,
+  canManage,
 }: Props) {
   return (
     <aside className="rs">
@@ -35,12 +35,13 @@ export function RightSidebar({
           members={members}
           tasks={project.tasks}
           ownerId={project.ownerId}
+          adminIds={project.adminIds}
           onAddMember={onAddMember}
           onOpenMember={onOpenMember}
-          isOwner={isOwner}
+          canManage={canManage}
         />
       )}
-      <GithubActivity onOpenTaskRef={onOpenTaskRef} isOwner={isOwner} />
+      <GithubActivity onOpenTaskRef={onOpenTaskRef} canManage={canManage} />
       <HealthBar />
     </aside>
   )
@@ -91,17 +92,19 @@ function TeamPanel({
   members,
   tasks,
   ownerId,
+  adminIds,
   onAddMember,
   onOpenMember,
-  isOwner,
+  canManage,
 }: {
   members: Member[]
   tasks: Task[]
   /** เจ้าของโปรเจค — คนละเรื่องกับ member.role ที่เป็นสายงาน */
   ownerId: string | null
+  adminIds: string[]
   onAddMember: () => void
   onOpenMember: (id: string) => void
-  isOwner: boolean
+  canManage: boolean
 }) {
   const load = members.map((m) => {
     const open = openTasksOf(tasks, m.id)
@@ -140,6 +143,8 @@ function TeamPanel({
                       เจ้าของเห็นป้าย Owner แทน ส่วนสายงานไปดูได้ในแดชบอร์ด */}
                   {member.id === ownerId ? (
                     <span className="owner-tag">Owner</span>
+                  ) : adminIds.includes(member.id) ? (
+                    <span className="owner-tag is-admin">Admin</span>
                   ) : (
                     <span className="rs-team-role">{member.role}</span>
                   )}
@@ -161,7 +166,7 @@ function TeamPanel({
         })}
       </ul>
 
-      {isOwner && (
+      {canManage && (
         <button type="button" className="rs-add-member" onClick={onAddMember}>
           <IconPlus size={14} /> Add member
         </button>
@@ -222,10 +227,10 @@ const POLL_MS = 5 * 60 * 1000
 
 function GithubActivity({
   onOpenTaskRef,
-  isOwner,
+  canManage,
 }: {
   onOpenTaskRef: (ref: string) => void
-  isOwner: boolean
+  canManage: boolean
 }) {
   const [commits, setCommits] = useState<Commit[]>([])
   const [events, setEvents] = useState<WebhookEvent[]>([])
@@ -363,7 +368,7 @@ function GithubActivity({
                     AI thinks this is <strong>{r.suggest.key}</strong> {r.suggest.title}
                   </span>
                   {r.suggest.reason && <span className="rs-guess-why">{r.suggest.reason}</span>}
-                  {isOwner && (
+                  {canManage && (
                     <button
                       type="button"
                       className="rs-guess-apply"

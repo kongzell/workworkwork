@@ -143,7 +143,13 @@ class ProjectOut(ApiModel):
     name: str
     github_repo: str | None
     member_ids: list[str]
+    #: สมาชิกที่เจ้าของตั้งเป็น admin — ทำได้เท่าเจ้าของในหน้าเว็บ
+    admin_ids: list[str] = []
     tasks: list[TaskOut]
+
+
+class MemberRoleUpdate(ApiModel):
+    role: Literal["member", "admin"]
 
 
 # ---------- AI ----------

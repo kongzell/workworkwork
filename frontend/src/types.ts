@@ -48,8 +48,10 @@ export type Task = {
 export type Project = {
   id: string
   name: string
-  /** id ของคนที่สร้างโปรเจค — ลบ/เปลี่ยนชื่อ/จัดการสมาชิกได้คนเดียว */
+  /** id ของคนที่สร้างโปรเจค — ลบโปรเจคกับตั้ง admin ได้คนเดียว */
   ownerId: string | null
+  /** สมาชิกที่เจ้าของตั้งเป็น admin — ทำได้เท่าเจ้าของในหน้าเว็บ */
+  adminIds: string[]
   /** รหัสย่อที่ใช้นำหน้าเลขงาน เช่น "KST" */
   taskPrefix: string
   /** repo บน GitHub ที่โปรเจคนี้ผูกอยู่ เช่น "kongzell/Follow-up" */

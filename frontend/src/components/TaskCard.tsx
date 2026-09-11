@@ -22,7 +22,7 @@ type Props = {
   /** repo ของโปรเจค ใช้ประกอบลิงก์ compare ตอนมีแค่ชื่อ branch */
   githubRepo: string | null
   /** เจ้าของโปรเจค — วางแผนงานได้ (ความสำคัญ หมวดหมู่ กำหนดส่ง ลบ มอบหมายคนอื่น) */
-  isOwner: boolean
+  canManage: boolean
   /** id ของคนที่ล็อกอินอยู่ ใช้ตัดสินว่ารับงานเองได้ไหม */
   currentMemberId: string | null
   /** กางรายละเอียดอยู่หรือไม่ */
@@ -47,7 +47,7 @@ const fmtDue = (iso: string) =>
   new Date(iso + "T00:00:00").toLocaleDateString("th-TH", { day: "numeric", month: "short" })
 
 export function TaskCard({
-  task, members, subtasks, taskPrefix, githubRepo, isOwner, currentMemberId, expanded,
+  task, members, subtasks, taskPrefix, githubRepo, canManage, currentMemberId, expanded,
   canClaim, onClaim, onOpen,
   onToggleSubtaskAssignee, onSetSubtaskStatus, onChangeStatus, onToggleAssignee,
   onSetPriority, onSetDue, onSetCategory, onSetDescription, onDelete, onAddMember,
@@ -81,7 +81,7 @@ export function TaskCard({
   const code = codeLink(task, githubRepo)
 
   //: สมาชิกส่งงานได้ถึงแค่ "รอตรวจ" — คนตรวจรับคือเจ้าของโปรเจค
-  const movable = isOwner ? STATUSES : STATUSES.filter((s) => s.id !== "complete")
+  const movable = canManage ? STATUSES : STATUSES.filter((s) => s.id !== "complete")
 
   return (
     <article
@@ -126,8 +126,8 @@ export function TaskCard({
                     {s.id === task.status && <IconCheck size={14} />}
                   </MenuItem>
                 ))}
-                {isOwner && <MenuLabel>Category</MenuLabel>}
-                {isOwner && CATEGORIES.map((c) => (
+                {canManage && <MenuLabel>Category</MenuLabel>}
+                {canManage && CATEGORIES.map((c) => (
                   <MenuItem
                     key={c.id}
                     active={c.id === task.category}
@@ -139,7 +139,7 @@ export function TaskCard({
                   </MenuItem>
                 ))}
 
-                {isOwner && (
+                {canManage && (
                   <MenuItem danger onClick={() => { onDelete(); close() }}>
                     <IconTrash size={14} /> Delete task
                   </MenuItem>
@@ -216,7 +216,7 @@ export function TaskCard({
                 <MenuLabel>Assignee</MenuLabel>
                 {members.length === 0 && <div className="menu-empty">No members in this project</div>}
 
-                {isOwner ? (
+                {canManage ? (
                   <>
                     {sortedMembers.map((m) => (
                       <MenuItem
@@ -261,7 +261,7 @@ export function TaskCard({
             )}
           </Menu>
 
-          {isOwner && (
+          {canManage && (
           <Menu title="Due date" trigger={() => <IconCalendar size={15} />}>
             {(close) => (
               <>
@@ -278,7 +278,7 @@ export function TaskCard({
           </Menu>
           )}
 
-          {isOwner && (
+          {canManage && (
           <Menu title="Priority" trigger={() => <IconFlag size={15} />}>
             {(close) => (
               <>
@@ -299,7 +299,7 @@ export function TaskCard({
 
       {/* ปุ่มตรวจงาน — โผล่เฉพาะการ์ดที่รอตรวจ และเฉพาะเจ้าของโปรเจค
           เป็นทางลัดของสองทางที่ต้องตัดสินหลังรีวิว: ให้ผ่าน หรือส่งกลับไปแก้ */}
-      {isOwner && task.status === "review" && (
+      {canManage && task.status === "review" && (
         <div className="card-review">
           <button
             type="button"
@@ -366,7 +366,7 @@ export function TaskCard({
                   </button>
                 </div>
               </>
-            ) : isOwner ? (
+            ) : canManage ? (
               <button
                 type="button"
                 className="cd-desc-btn"
@@ -387,8 +387,8 @@ export function TaskCard({
           <TaskComments
             taskId={task.id}
             currentMemberId={currentMemberId}
-            canWrite={isOwner || (currentMemberId !== null && task.assigneeIds.includes(currentMemberId))}
-            isOwner={isOwner}
+            canWrite={canManage || (currentMemberId !== null && task.assigneeIds.includes(currentMemberId))}
+            canManage={canManage}
           />
 
           {subtasks.length > 0 && (

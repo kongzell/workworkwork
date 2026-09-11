@@ -30,7 +30,7 @@ type Props = {
   onDeleteTask: (taskId: string) => void
   onAddMember: () => void
   /** เจ้าของโปรเจคเท่านั้นที่เพิ่มงานและจัดการสมาชิกได้ */
-  isOwner: boolean
+  canManage: boolean
   onClearFilters: () => void
 }
 
@@ -39,7 +39,7 @@ export function Board({
   onClaimTask, onOpenTask,
   onSetSubtaskStatus, onAddTask, onChangeStatus, onToggleAssignee,
   onSetPriority, onSetDue, onSetCategory, onSetDescription, onDeleteTask, onAddMember,
-  isOwner,
+  canManage,
   onClearFilters,
 }: Props) {
   const visible = useMemo(() => {
@@ -122,7 +122,7 @@ export function Board({
               subtasks={project.tasks.filter((s) => s.parentId === t.id)}
               taskPrefix={project.taskPrefix}
               githubRepo={project.githubRepo}
-              isOwner={isOwner}
+              canManage={canManage}
               currentMemberId={currentMemberId}
               expanded={t.id === selectedTaskId}
               canClaim={currentMemberId !== null && t.assigneeIds.length === 0}
@@ -169,7 +169,7 @@ export function Board({
               {/* งานใหม่เริ่มที่ "รอเริ่ม" เสมอ ไม่ควรสร้างงานเข้ากลางกระบวนการโดยตรง
                   โหมดจัดกลุ่มตามหมวดหมู่ไม่มีคอลัมน์รอเริ่ม จึงไม่มีปุ่มเลย —
                   สลับกลับไปดูตามสถานะก่อนถึงจะเพิ่มงานได้ */}
-              {isOwner && groupBy === "status" && col.addStatus === "todo" && (
+              {canManage && groupBy === "status" && col.addStatus === "todo" && (
                 <NewTask onSubmit={(draft) => onAddTask(col.addStatus, draft)} />
               )}
             </section>

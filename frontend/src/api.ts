@@ -87,6 +87,7 @@ type ApiProject = {
   id: string
   name: string
   ownerId: string | null
+  adminIds: string[]
   taskPrefix: string
   githubRepo: string | null
   memberIds: string[]
@@ -118,6 +119,7 @@ const toProject = (p: ApiProject): Project => ({
   id: p.id,
   name: p.name,
   ownerId: p.ownerId,
+  adminIds: p.adminIds,
   taskPrefix: p.taskPrefix,
   githubRepo: p.githubRepo,
   memberIds: p.memberIds,
@@ -156,6 +158,20 @@ export async function deleteProject(id: string): Promise<void> {
 
 export async function addProjectMember(projectId: string, memberId: string): Promise<void> {
   const res = await fetch(`/api/projects/${projectId}/members/${memberId}`, { method: "POST" })
+  if (!res.ok) throw new ApiError(await readError(res), res.status)
+}
+
+/** ตั้งหรือถอด admin — เจ้าของโปรเจคเท่านั้น */
+export async function setProjectMemberRole(
+  projectId: string,
+  memberId: string,
+  role: "member" | "admin",
+): Promise<void> {
+  const res = await fetch(`/api/projects/${projectId}/members/${memberId}`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ role }),
+  })
   if (!res.ok) throw new ApiError(await readError(res), res.status)
 }
 

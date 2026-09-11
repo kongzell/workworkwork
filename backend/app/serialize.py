@@ -34,5 +34,6 @@ def project_out(project: Project) -> ProjectOut:
         owner_id=project.owner_id,
         task_prefix=project.task_prefix,
         member_ids=[m.id for m in project.members],
+        admin_ids=sorted(project.admin_ids),
         tasks=[task_out(t) for t in sorted(project.tasks, key=lambda t: t.position)],
     )

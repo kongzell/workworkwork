@@ -73,3 +73,10 @@
   white-space: nowrap;
   vertical-align: 1px;
 }
+
+/* admin ที่เจ้าของตั้ง — สิทธิ์เท่าเจ้าของในเว็บ ใช้สีต่างกันให้แยกออกทันที */
+.owner-tag.is-admin {
+  border-color: var(--border-strong);
+  background: var(--bg-card);
+  color: var(--text);
+}

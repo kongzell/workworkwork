@@ -47,6 +47,10 @@ project_members = Table(
     Base.metadata,
     Column("project_id", ForeignKey("projects.id", ondelete="CASCADE"), primary_key=True),
     Column("member_id", ForeignKey("members.id", ondelete="CASCADE"), primary_key=True),
+    #: "member" หรือ "admin" — admin ทำได้เท่าเจ้าของในหน้าเว็บ (สร้าง/ปิดงาน จัดการสมาชิก)
+    #: ยกเว้นลบโปรเจคกับตั้ง admin คนอื่น ซึ่งเป็นของเจ้าของคนเดียว
+    #: เป็นสิทธิ์ต่อโปรเจค ไม่เกี่ยวกับสิทธิ์บน GitHub
+    Column("role", String(10), nullable=False, default="member", server_default="member"),
 )
 
 task_assignees = Table(
@@ -109,12 +113,30 @@ class Project(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now)
 
     members: Mapped[list[Member]] = relationship(secondary=project_members, lazy="selectin")
+    #: แถวในตารางเชื่อมพร้อม role — อ่านอย่างเดียว การเพิ่ม/ลบคนยังทำผ่าน members
+    memberships: Mapped[list[ProjectMember]] = relationship(lazy="selectin", viewonly=True)
     tasks: Mapped[list[Task]] = relationship(
         back_populates="project",
         cascade="all, delete-orphan",
         order_by="Task.position",
         lazy="selectin",
     )
+
+    @property
+    def admin_ids(self) -> set[str]:
+        return {pm.member_id for pm in self.memberships if pm.role == "admin"}
+
+    def can_manage(self, member_id: str | None) -> bool:
+        """เจ้าของหรือ admin — ใช้แทนการเช็ค owner_id ตรง ๆ ในทุก endpoint"""
+        return member_id is not None and (member_id == self.owner_id or member_id in self.admin_ids)
+
+
+class ProjectMember(Base):
+    """แถวหนึ่งในตารางเชื่อม — มีไว้อ่าน role เท่านั้น"""
+
+    __table__ = project_members
+
+    member: Mapped[Member] = relationship(lazy="selectin")
 
 
 class Task(Base):

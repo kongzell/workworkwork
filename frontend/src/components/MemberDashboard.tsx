@@ -154,6 +154,7 @@ export function MemberPanel({ project, members, memberId, onSelectMember, onOpen
           <span className="md-name">
             {member.name}
             {member.id === project.ownerId && <span className="owner-tag">Owner</span>}
+            {project.adminIds.includes(member.id) && <span className="owner-tag is-admin">Admin</span>}
           </span>
           <span className="md-role">{member.role}</span>
         </div>

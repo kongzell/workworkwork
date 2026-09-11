@@ -13,18 +13,23 @@ type Props = {
   members: Member[]
   /** เจ้าของโปรเจค — ถอดออกไม่ได้ */
   ownerId: string | null
+  /** สมาชิกที่เป็น admin ของโปรเจคนี้ */
+  adminIds: string[]
+  /** คนที่เปิด modal เป็นเจ้าของจริงไหม — ปุ่มตั้ง/ถอด admin โชว์เฉพาะเจ้าของ */
+  isOwner: boolean
   /** พนักงานใน workspace ที่ยังไม่ได้อยู่ในโปรเจคนี้ */
   available: Member[]
   onClose: () => void
   onAddExisting: (memberId: string) => void
   onRemove: (memberId: string) => void
+  onSetRole: (memberId: string, role: "member" | "admin") => void
   /** เรียกหลังดึงรายชื่อจาก GitHub เสร็จ เพื่อให้ App โหลดพนักงานใหม่ */
   onImported: () => void
 }
 
 export function AddMemberModal({
-  projectName, githubRepo, members, ownerId, available, onClose, onAddExisting, onRemove,
-  onImported,
+  projectName, githubRepo, members, ownerId, adminIds, isOwner, available, onClose,
+  onAddExisting, onRemove, onSetRole, onImported,
 }: Props) {
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => e.key === "Escape" && onClose()
@@ -56,26 +61,44 @@ export function AddMemberModal({
             <h3 className="modal-h3">In this project ({members.length})</h3>
             {members.length === 0 && <p className="modal-empty">Nobody in this project yet</p>}
             <ul className="member-list">
-              {members.map((m) => (
-                <li key={m.id} className="member-row">
-                  <Avatar member={m} size={30} />
-                  <span className="member-info">
-                    <span className="member-name">
-                      {m.name}
-                      {m.id === ownerId && <span className="owner-tag">Owner</span>}
+              {members.map((m) => {
+                const isAdmin = adminIds.includes(m.id)
+                return (
+                  <li key={m.id} className="member-row">
+                    <Avatar member={m} size={30} />
+                    <span className="member-info">
+                      <span className="member-name">
+                        {m.name}
+                        {m.id === ownerId && <span className="owner-tag">Owner</span>}
+                        {isAdmin && <span className="owner-tag is-admin">Admin</span>}
+                      </span>
+                      <span className="member-role">{m.role}</span>
                     </span>
-                    <span className="member-role">{m.role}</span>
-                  </span>
-                  <button
-                    type="button"
-                    className="member-action is-danger"
-                    title="Remove from project"
-                    onClick={() => onRemove(m.id)}
-                  >
-                    <IconTrash size={14} />
-                  </button>
-                </li>
-              ))}
+                    {/* admin เป็นสิทธิ์ในเว็บนี้อย่างเดียว ไม่แตะสิทธิ์บน GitHub
+                        เจ้าของเท่านั้นที่ตั้ง/ถอดได้ — admin ตั้ง admin ต่อไม่ได้ */}
+                    {isOwner && m.id !== ownerId && (
+                      <button
+                        type="button"
+                        className="member-action"
+                        title={isAdmin ? "Back to a regular member" : "Same permissions as the owner on this board"}
+                        onClick={() => onSetRole(m.id, isAdmin ? "member" : "admin")}
+                      >
+                        {isAdmin ? "Remove admin" : "Make admin"}
+                      </button>
+                    )}
+                    {m.id !== ownerId && (
+                      <button
+                        type="button"
+                        className="member-action is-danger"
+                        title="Remove from project"
+                        onClick={() => onRemove(m.id)}
+                      >
+                        <IconTrash size={14} />
+                      </button>
+                    )}
+                  </li>
+                )
+              })}
             </ul>
           </section>
 

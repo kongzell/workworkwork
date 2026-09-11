@@ -468,8 +468,8 @@ async def apply_suggestion(
         raise HTTPException(404, "The suggested task has been deleted")
 
     project = await session.get(Project, task.project_id)
-    if project is None or project.owner_id != me.id:
-        raise HTTPException(403, "Only the project owner can confirm a suggestion")
+    if project is None or not project.can_manage(me.id):
+        raise HTTPException(403, "Only the project owner or an admin can confirm a suggestion")
 
     if task.status != "complete":
         apply_status_change(task, "review")
