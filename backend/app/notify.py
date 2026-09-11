@@ -1,10 +1,27 @@
 from __future__ import annotations
 
+import logging
+
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import get_settings
 from app.models import Member, Project, Task, project_members
+
+log = logging.getLogger("notify")
+
+
+def explain_skip(event: str, task: Task, candidates: int, with_email: int) -> None:
+    """บอกใน log ว่าทำไมเหตุการณ์นี้ถึงไม่มีอีเมลออก
+
+    เดิมเงียบสนิทเมื่อไม่มีผู้รับ ทำให้แยกไม่ออกว่า "ไม่มีใครกรอกอีเมล"
+    กับ "คนกดเป็นคนเดียวกับผู้ที่ควรได้รับ" — ไล่หาสาเหตุเสียเวลาไปหลายรอบ
+    """
+    if candidates == 0:
+        why = "ผู้ที่ควรได้รับถูกตัดออกหมด (คนกดปุ่มคือคนเดียวกับผู้รับ)"
+    else:
+        why = f"ผู้ที่ควรได้รับ {candidates} คน แต่กรอกอีเมลไว้ {with_email} คน"
+    log.info("%s #%s — ไม่ส่งแจ้งเตือน: %s", event, task.number, why)
 
 
 async def project_emails(

@@ -227,6 +227,9 @@ async def create_task(
             if to:
                 subject, body = notify.task_created(project, task, me)
                 background.add_task(mailer.send, to, subject, body)
+            else:
+                others = len([m for m in project.members if m.id != me.id])
+                notify.explain_skip("งานใหม่", task, others, 0)
 
         return task_out(task)
 

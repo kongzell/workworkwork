@@ -158,6 +158,8 @@ async def assign(
         if to:
             subject, body = notify.task_claimed(project, task, member)
             background.add_task(mailer.send, to, subject, body)
+        else:
+            notify.explain_skip("รับงาน", task, len(watchers), 0)
     return task_out(task)
 
 

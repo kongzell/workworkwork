@@ -254,6 +254,7 @@ export default function App() {
           projects={projects}
           activeProjectId={project?.id ?? null}
           starredIds={starredIds}
+          currentMemberId={auth?.member?.id ?? null}
           members={projectMembers}
           filters={filters}
           onChangeFilters={setFilters}

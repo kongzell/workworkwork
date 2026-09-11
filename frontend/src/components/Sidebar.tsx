@@ -12,6 +12,8 @@ type Props = {
   projects: Project[]
   activeProjectId: string | null
   starredIds: string[]
+  /** คนที่ล็อกอินอยู่ — ใช้แยกว่าโปรเจคไหนเราเป็นเจ้าของ */
+  currentMemberId: string | null
   members: Member[]
   filters: Filters
   onChangeFilters: (f: Filters) => void
@@ -21,10 +23,28 @@ type Props = {
 }
 
 export function Sidebar({
-  projects, activeProjectId, starredIds, members, filters, onChangeFilters,
+  projects, activeProjectId, starredIds, currentMemberId, members, filters, onChangeFilters,
   onSelectProject, onOpenAddProject, onCollapse,
 }: Props) {
   const filterOn = filters.assigneeId !== null || filters.priority !== null
+
+  // แยกโปรเจคที่เราสร้างเอง ออกจากที่ถูกเชิญเข้าไป — สิทธิ์ต่างกันคนละแบบ
+  const owned = projects.filter((p) => p.ownerId === currentMemberId)
+  const shared = projects.filter((p) => p.ownerId !== currentMemberId)
+
+  const renderRow = (p: Project) => (
+    <button
+      key={p.id}
+      type="button"
+      className={`sb-row sb-child${p.id === activeProjectId ? " is-active" : ""}`}
+      onClick={() => onSelectProject(p.id)}
+    >
+      <IconTaskList size={14} className="sb-glyph-list" />
+      <span className="sb-child-name">{p.name}</span>
+      {starredIds.includes(p.id) && <IconStar size={12} className="sb-star" />}
+      <span className="sb-count">{p.tasks.length}</span>
+    </button>
+  )
 
   return (
     <aside className="sidebar">
@@ -117,19 +137,19 @@ export function Sidebar({
           </div>
 
           <div className="sb-children">
-            {projects.map((p) => (
-              <button
-                key={p.id}
-                type="button"
-                className={`sb-row sb-child${p.id === activeProjectId ? " is-active" : ""}`}
-                onClick={() => onSelectProject(p.id)}
-              >
-                <IconTaskList size={14} className="sb-glyph-list" />
-                <span className="sb-child-name">{p.name}</span>
-                {starredIds.includes(p.id) && <IconStar size={12} className="sb-star" />}
-                <span className="sb-count">{p.tasks.length}</span>
-              </button>
-            ))}
+            {/* ซ่อนหัวข้อกลุ่มที่ว่าง — ไม่งั้นคนที่ยังไม่ถูกเชิญที่ไหนจะเห็น "Shared with me" เปล่า ๆ */}
+            {owned.length > 0 && (
+              <>
+                <span className="sb-group">Owned by me</span>
+                {owned.map(renderRow)}
+              </>
+            )}
+            {shared.length > 0 && (
+              <>
+                <span className="sb-group">Shared with me</span>
+                {shared.map(renderRow)}
+              </>
+            )}
           </div>
         </div>
 
