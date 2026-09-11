@@ -70,16 +70,35 @@ class SpaFiles(StaticFiles):
 
     บอร์ดเป็น SPA เส้นทางอย่าง /project/123 ไม่มีไฟล์อยู่จริง ถ้าไม่ fallback
     ผู้ใช้ที่ refresh หน้ากลางทางจะเจอ 404
+
+    เรื่อง cache ต้องจัดเองเพราะไม่ได้ผ่าน nginx เหมือนตอนรันบนเครื่อง:
+    - index.html ห้ามจำ — ชื่อไฟล์ใน /assets/ เปลี่ยนทุก build ถ้าเบราว์เซอร์จำ
+      index.html เก่าไว้ จะขอ JS ชื่อเก่าที่ไม่มีแล้ว และเห็นหน้าเว็บเวอร์ชันเก่าค้าง
+    - /assets/ จำได้ยาว ๆ — ชื่อไฟล์มี hash อยู่แล้ว เนื้อหาเปลี่ยนชื่อก็เปลี่ยน
     """
 
     async def get_response(self, path: str, scope):  # noqa: ANN001, ANN201
         try:
-            return await super().get_response(path, scope)
+            response = await super().get_response(path, scope)
         except Exception:
+            # ไฟล์ที่มีนามสกุล (js/css/svg) หาไม่เจอต้องเป็น 404 จริง ๆ
+            # ไม่งั้น JS ชื่อเก่าจะได้ HTML กลับไปแทน แล้วหน้าเว็บพังแบบหาสาเหตุยาก
+            name = path.rsplit("/", 1)[-1]
+            if "." in name:
+                raise
             index = STATIC_DIR / "index.html"
-            if index.is_file():
-                return FileResponse(index)
-            raise
+            if not index.is_file():
+                raise
+            response = FileResponse(index)
+
+        # ดูจากไฟล์ที่ตอบกลับจริง ไม่ดูจาก path — เพราะ "/" ถูกส่งมาเป็น "." และ
+        # หน้า SPA ที่ fallback ก็ไม่มีคำว่า index.html ใน path เลย
+        served = str(getattr(response, "path", ""))
+        if served.endswith("index.html"):
+            response.headers["Cache-Control"] = "no-cache"
+        elif path.startswith("assets/"):
+            response.headers["Cache-Control"] = "public, max-age=31536000, immutable"
+        return response
 
 
 if STATIC_DIR.is_dir():
