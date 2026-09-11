@@ -430,7 +430,7 @@ function NeedLogin({ configured }: { configured: boolean }) {
       <p>
         {configured
           ? "Everyone sees their own board — sign in with GitHub to see the projects you belong to"
-          : "GitHub OAuth is not configured — see README.docker.md for setup"}
+          : "GitHub OAuth is not configured — see README.md for setup"}
       </p>
       {configured && (
         <a className="btn btn-primary" href="/api/auth/github">
