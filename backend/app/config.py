@@ -39,21 +39,20 @@ class Settings(BaseSettings):
     #: secret ที่ตั้งไว้ตอนสร้าง webhook บน GitHub (ใช้ตรวจลายเซ็น)
     github_webhook_secret: str = ""
 
-    # --- แจ้งเตือนทางอีเมล ---
-    #: บัญชี Gmail ที่ใช้ส่ง — ต้องเปิด 2FA แล้วสร้าง App Password 16 หลัก
-    #: รหัสผ่าน Gmail ปกติใช้ไม่ได้ Google ปิดไปตั้งแต่ปี 2022
-    smtp_host: str = "smtp.gmail.com"
-    smtp_port: int = 587
-    smtp_user: str = ""
-    smtp_password: str = ""
-    #: ชื่อที่ผู้รับเห็น — ที่อยู่ผู้ส่งบังคับเป็น smtp_user เสมอ Gmail ไม่ให้เปลี่ยน
+    # --- แจ้งเตือนทางอีเมล (Brevo) ---
+    #: ขอได้ที่ Brevo > SMTP & API > API Keys
+    #: ใช้ HTTPS API แทน SMTP เพราะ Render บล็อกพอร์ต 587 ขาออก
+    brevo_api_key: str = ""
+    #: อีเมลผู้ส่ง — ต้องยืนยันไว้ใน Brevo ก่อน ไม่งั้นจะถูกปฏิเสธ
+    mail_from: str = ""
+    #: ชื่อที่ผู้รับเห็นคู่กับอีเมลผู้ส่ง
     mail_from_name: str = "Follow-up"
     #: URL ของเว็บ ใช้ทำลิงก์ในอีเมล
     app_url: str = "http://localhost:8081"
 
     @property
     def mail_ready(self) -> bool:
-        return bool(self.smtp_user and self.smtp_password)
+        return bool(self.brevo_api_key and self.mail_from)
 
     # --- session ---
     #: ใช้เซ็น cookie — ตอน deploy จริงต้องเปลี่ยนเป็นค่าสุ่มยาว ๆ

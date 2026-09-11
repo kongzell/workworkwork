@@ -1,21 +1,10 @@
-import { useMemo, useState } from "react"
+import { useMemo } from "react"
 import type { Member, Project, Task } from "../types"
 import {
   STATUSES, taskKey, taskPoints, WORKLOAD_CAPACITY, workloadLevel,
 } from "../types"
 import { Avatar } from "./Avatar"
 import "./MemberDashboard.css"
-
-/** ช่วงเวลาที่นับผลงานย้อนหลัง — 0 คือไม่จำกัด
- *
- * ต้องมีตัวเลือกนี้ เพราะถ้านับตั้งแต่เปิดโปรเจคเสมอ คนที่เข้าทีมทีหลัง
- * จะมีตัวเลขน้อยกว่าคนอื่นตลอด ทั้งที่ทำงานได้ดีเท่ากัน
- */
-const RANGES: { days: number; label: string }[] = [
-  { days: 7, label: "7 days" },
-  { days: 30, label: "30 days" },
-  { days: 0, label: "All time" },
-]
 
 /** จำนวนงานที่ปิดขั้นต่ำก่อนจะเชื่อเปอร์เซ็นต์ในหน้านี้ได้
  *
@@ -48,18 +37,14 @@ const lateDays = (task: Task): number | null => {
 
 type Talk = { key: string; taskId: string | null; text: string; tone: "bad" | "warn" }
 
-function buildStats(tasks: Task[], memberId: string, days: number) {
+function buildStats(tasks: Task[], memberId: string) {
   // งานที่รับร่วมกันหลายคนจะถูกนับเต็มให้ทุกคนที่ถือ
   // หารแต้มแล้วตัวเลขจะอ่านยากกว่าเดิม และงานร่วมในโปรเจคนี้มีไม่กี่ใบ
   const mine = tasks.filter((t) => t.assigneeIds.includes(memberId))
   const open = mine.filter((t) => t.status !== "complete")
 
-  const cutoff = days === 0 ? null : new Date(Date.now() - days * 86_400_000)
-  const done = mine.filter(
-    (t) =>
-      t.status === "complete" &&
-      (cutoff === null || (t.completedAt !== null && new Date(t.completedAt) >= cutoff)),
-  )
+  // นับทุกงานที่ปิดแล้ว — ไม่มีตัวเลือกช่วงเวลาให้สับสน
+  const done = mine.filter((t) => t.status === "complete")
 
   const openPoints = open.reduce((sum, t) => sum + taskPoints(t), 0)
   const donePoints = done.reduce((sum, t) => sum + taskPoints(t), 0)
@@ -133,12 +118,10 @@ type Props = {
 
 /** เนื้อของแท็บ "People" — กรอบ modal อยู่ที่ Dashboard.tsx */
 export function MemberPanel({ project, members, memberId, onSelectMember, onOpenTask }: Props) {
-  const [days, setDays] = useState(30)
-
   const member = members.find((m) => m.id === memberId) ?? null
   const stats = useMemo(
-    () => buildStats(project.tasks, memberId, days),
-    [project.tasks, memberId, days],
+    () => buildStats(project.tasks, memberId),
+    [project.tasks, memberId],
   )
 
   if (!member) return null
@@ -173,18 +156,6 @@ export function MemberPanel({ project, members, memberId, onSelectMember, onOpen
             {member.id === project.ownerId && <span className="owner-tag">Owner</span>}
           </span>
           <span className="md-role">{member.role}</span>
-        </div>
-        <div className="md-range">
-          {RANGES.map((r) => (
-            <button
-              key={r.days}
-              type="button"
-              className={`md-range-btn${r.days === days ? " is-active" : ""}`}
-              onClick={() => setDays(r.days)}
-            >
-              {r.label}
-            </button>
-          ))}
         </div>
       </div>
 
@@ -230,7 +201,7 @@ export function MemberPanel({ project, members, memberId, onSelectMember, onOpen
       {/* แต้มสำคัญกว่าจำนวนงาน คนที่หยิบแต่งานง่ายจะปิดได้เยอะที่สุดเสมอ */}
       <p className="md-note">
         Points come from complexity — easy 1 · medium 3 · hard 5
-        {thin && ` · only ${stats.done.length} closed in this range, too little data to judge`}
+        {thin && ` · only ${stats.done.length} closed so far, too little data to judge`}
       </p>
 
       {stats.talk.length > 0 && (
@@ -277,7 +248,7 @@ export function MemberPanel({ project, members, memberId, onSelectMember, onOpen
       <section className="md-block">
         <h3 className="modal-h3">Closed tasks ({stats.done.length})</h3>
         {stats.done.length === 0 ? (
-          <p className="modal-empty">No tasks closed in this range</p>
+          <p className="modal-empty">No tasks closed yet</p>
         ) : (
           <ul className="md-list">
             {stats.done.map((t) => {

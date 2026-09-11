@@ -47,10 +47,11 @@ services:
         sync: false
 
       # แจ้งเตือนทางอีเมล — ไม่ตั้งก็ deploy ได้ แค่ไม่มีอีเมลส่งออก
-      # SMTP_PASSWORD คือ App Password 16 หลักของ Gmail ไม่ใช่รหัสผ่านปกติ
-      - key: SMTP_USER
+      # ใช้ Brevo ผ่าน HTTPS เพราะ Render บล็อกพอร์ต SMTP ขาออก
+      - key: BREVO_API_KEY
         sync: false
-      - key: SMTP_PASSWORD
+      # ต้องเป็นอีเมลที่ยืนยันไว้ใน Brevo แล้ว
+      - key: MAIL_FROM
         sync: false
       - key: MAIL_FROM_NAME
         sync: false

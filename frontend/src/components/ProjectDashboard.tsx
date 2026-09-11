@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react"
+import { useMemo } from "react"
 import type { Member, Project, Task } from "../types"
 import {
   categoryColor, STATUSES, taskKey, taskPoints, WORKLOAD_CAPACITY, workloadLevel,
@@ -10,12 +10,6 @@ const DAY = 86_400_000
 
 /** จำนวนสัปดาห์ที่โชว์ในกราฟความเร็ว — 6 สัปดาห์พอเห็นแนวโน้มโดยไม่ต้องเลื่อนจอ */
 const WEEKS_SHOWN = 6
-
-const RANGES: { days: number; label: string }[] = [
-  { days: 7, label: "7 days" },
-  { days: 30, label: "30 days" },
-  { days: 0, label: "All time" },
-]
 
 const UNCATEGORIZED = "Uncategorized"
 
@@ -62,14 +56,9 @@ function buildPace(tasks: Task[]) {
 
 /* ---------- ใครปิดงานอะไรไปบ้าง ---------- */
 
-function buildClosed(tasks: Task[], members: Member[], days: number) {
-  const cutoff = days === 0 ? null : Date.now() - days * DAY
-  const closed = tasks.filter(
-    (t) =>
-      t.status === "complete" &&
-      t.completedAt !== null &&
-      (cutoff === null || new Date(t.completedAt).getTime() >= cutoff),
-  )
+function buildClosed(tasks: Task[], members: Member[]) {
+  // นับทุกงานที่ปิดแล้วตั้งแต่เปิดโปรเจค — ไม่มีตัวเลือกช่วงเวลาให้สับสน
+  const closed = tasks.filter((t) => t.status === "complete" && t.completedAt !== null)
 
   const rows = members
     .map((member) => {
@@ -120,11 +109,9 @@ type Props = {
 
 /** เนื้อของแท็บ "Project overview" — กรอบ modal อยู่ที่ Dashboard.tsx */
 export function ProjectPanel({ project, members, onOpenMember, onOpenTask }: Props) {
-  const [days, setDays] = useState(30)
-
   const tasks = project.tasks
   const pace = useMemo(() => buildPace(tasks), [tasks])
-  const closed = useMemo(() => buildClosed(tasks, members, days), [tasks, members, days])
+  const closed = useMemo(() => buildClosed(tasks, members), [tasks, members])
 
   const open = tasks.filter((t) => t.status !== "complete")
   const done = tasks.length - open.length
@@ -237,24 +224,10 @@ export function ProjectPanel({ project, members, onOpenMember, onOpenTask }: Pro
 
       {/* ---------- ใครปิดอะไรไปบ้าง ---------- */}
       <section className="pd-card is-wide">
-        <div className="pd-head-row">
-          <h3 className="modal-h3">Closed by person</h3>
-          <div className="pd-range">
-            {RANGES.map((r) => (
-              <button
-                key={r.days}
-                type="button"
-                className={`pd-range-btn${r.days === days ? " is-active" : ""}`}
-                onClick={() => setDays(r.days)}
-              >
-                {r.label}
-              </button>
-            ))}
-          </div>
-        </div>
+        <h3 className="modal-h3">Closed by person</h3>
 
         {closed.tasks === 0 ? (
-          <p className="modal-empty">No tasks closed in this range</p>
+          <p className="modal-empty">No tasks closed yet</p>
         ) : (
           <>
             <ul className="pd-people">

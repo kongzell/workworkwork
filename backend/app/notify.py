@@ -1,8 +1,3 @@
-"""ข้อความแจ้งเตือนของแต่ละเหตุการณ์
-
-แยกจาก mailer.py เพราะที่นั่นรู้แค่วิธีส่ง ไม่รู้จักงานหรือโปรเจค
-"""
-
 from __future__ import annotations
 
 from sqlalchemy import select
